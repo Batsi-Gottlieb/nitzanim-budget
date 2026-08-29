@@ -41,9 +41,17 @@ export default async function SubModelPage({ params }: { params: Promise<{ subMo
 
   return (
     <div className="max-w-6xl space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">{subModel.name}</h1>
-        <p className="mt-1 text-sm text-foreground-muted">מודל: {model.name}</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">{subModel.name}</h1>
+          <p className="mt-1 text-sm text-foreground-muted">מודל: {model.name}</p>
+        </div>
+        <a
+          href={`/api/sub-models/${subModelId}/export`}
+          className="rounded-lg border border-border bg-surface px-4 py-2 text-sm font-semibold hover:bg-surface-muted"
+        >
+          ייצוא לאקסל
+        </a>
       </div>
       <SubModelEditor
         subModelId={subModelId}
