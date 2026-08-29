@@ -1,8 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient as createSupabaseJsClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 function randomPassword() {
   return Math.random().toString(36).slice(2, 10) + Math.random().toString(36).slice(2, 6).toUpperCase() + "!1";
@@ -16,12 +16,15 @@ export async function createClientWithUser(formData: FormData) {
   const supabase = await createClient();
   const password = randomPassword();
 
-  // Use an isolated (non-cookie-bound) client for signUp so we don't overwrite the admin's own session.
-  const authClient = createSupabaseJsClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
-  );
-  const { data: signUpData, error: signUpError } = await authClient.auth.signUp({ email, password });
+  // Admin-provisioned account: create it pre-confirmed via the service-role API,
+  // so the office doesn't depend on the client clicking a confirmation email
+  // (and doesn't hit the auth email rate limit).
+  const adminClient = createAdminClient();
+  const { data: signUpData, error: signUpError } = await adminClient.auth.admin.createUser({
+    email,
+    password,
+    email_confirm: true,
+  });
   if (signUpError || !signUpData.user) {
     return { error: signUpError?.message ?? "יצירת המשתמש נכשלה" };
   }
