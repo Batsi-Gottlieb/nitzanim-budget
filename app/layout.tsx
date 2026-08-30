@@ -11,10 +11,13 @@ const assistant = Assistant({
 export const metadata: Metadata = {
   title: "ניצנים | מערכת תקציבי צהרונים",
   description: "מערכת בניית תקציבים לצהרונים — רוח גוטליב-ביטון",
+  icons: {
+    icon: "/favicon.png",
+  },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#1c1e22",
+  themeColor: "#fbf8f2",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
