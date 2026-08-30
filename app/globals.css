@@ -1,20 +1,33 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f7f8fb;
+  --background: #f7f5f0;
   --surface: #ffffff;
-  --surface-muted: #eef1f7;
-  --foreground: #1a1d29;
-  --foreground-muted: #6b7280;
-  --border: #e3e6ee;
-  --primary: #145c4b;
-  --primary-hover: #0e483a;
+  --surface-muted: #f2ede2;
+  --foreground: #23211c;
+  --foreground-muted: #6e675a;
+  --border: #e6dfcd;
+
+  --primary: #a97e35;
+  --primary-hover: #8f6a2a;
   --primary-foreground: #ffffff;
-  --accent: #d9a441;
-  --accent-foreground: #1a1d29;
-  --danger: #c0392b;
-  --success: #1e7d4f;
-  --radius: 0.75rem;
+
+  --accent: #c69b4a;
+  --accent-hover: #b3893c;
+  --accent-foreground: #211d14;
+
+  --danger: #b8433a;
+  --success: #2f7d55;
+  --radius: 0.9rem;
+
+  --sidebar-bg: #1c1e22;
+  --sidebar-bg-elevated: #26292e;
+  --sidebar-foreground: #ece7da;
+  --sidebar-foreground-muted: #9b968b;
+  --sidebar-border: #34373d;
+  --sidebar-active-bg: rgba(198, 155, 74, 0.16);
+
+  --gold-gradient: linear-gradient(135deg, #e4c07b 0%, #c69b4a 45%, #8f6a2a 100%);
 }
 
 @theme inline {
@@ -28,9 +41,16 @@
   --color-primary-hover: var(--primary-hover);
   --color-primary-foreground: var(--primary-foreground);
   --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
   --color-accent-foreground: var(--accent-foreground);
   --color-danger: var(--danger);
   --color-success: var(--success);
+  --color-sidebar-bg: var(--sidebar-bg);
+  --color-sidebar-bg-elevated: var(--sidebar-bg-elevated);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-foreground-muted: var(--sidebar-foreground-muted);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-active-bg: var(--sidebar-active-bg);
   --font-sans: var(--font-assistant);
 }
 
@@ -41,4 +61,11 @@ body {
 
 * {
   border-color: var(--border);
+}
+
+.gold-text {
+  background: var(--gold-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }

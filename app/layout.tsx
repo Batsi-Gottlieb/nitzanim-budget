@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Assistant } from "next/font/google";
 import "./globals.css";
 
@@ -11,6 +11,10 @@ const assistant = Assistant({
 export const metadata: Metadata = {
   title: "ניצנים | מערכת תקציבי צהרונים",
   description: "מערכת בניית תקציבים לצהרונים — רוח גוטליב-ביטון",
+};
+
+export const viewport: Viewport = {
+  themeColor: "#1c1e22",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

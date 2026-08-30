@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { LogoMark } from "@/components/Logo";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -27,11 +28,19 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center px-4">
-      <div className="w-full max-w-sm rounded-2xl border border-border bg-surface p-8 shadow-sm">
-        <div className="mb-8 text-center">
-          <h1 className="text-2xl font-extrabold text-primary">ניצנים</h1>
-          <p className="mt-1 text-sm text-foreground-muted">מערכת תקציבי צהרונים</p>
+    <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-sidebar-bg px-4">
+      <div
+        className="pointer-events-none absolute inset-0 opacity-[0.07]"
+        style={{
+          backgroundImage:
+            "radial-gradient(circle at 20% 20%, #C69B4A 0, transparent 45%), radial-gradient(circle at 85% 75%, #C69B4A 0, transparent 40%)",
+        }}
+      />
+      <div className="relative w-full max-w-sm rounded-2xl border border-sidebar-border bg-surface p-8 shadow-2xl">
+        <div className="mb-8 flex flex-col items-center text-center">
+          <LogoMark size={56} />
+          <h1 className="mt-4 text-2xl font-extrabold gold-text">ניצנים</h1>
+          <p className="mt-1 text-sm text-foreground-muted">מערכת תקציבי צהרונים · רוח גוטליב-ביטון</p>
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
@@ -60,7 +69,8 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-lg bg-primary py-2.5 text-sm font-semibold text-primary-foreground transition hover:bg-primary-hover disabled:opacity-60"
+            className="w-full rounded-lg py-2.5 text-sm font-bold shadow-md transition hover:brightness-110 disabled:opacity-60"
+            style={{ background: "var(--gold-gradient)", color: "#211d14" }}
           >
             {loading ? "מתחבר..." : "כניסה"}
           </button>
