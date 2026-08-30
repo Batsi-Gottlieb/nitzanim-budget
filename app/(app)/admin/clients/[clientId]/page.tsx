@@ -25,16 +25,8 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ c
     : { data: [] };
   const assignedIds = new Set((assigned ?? []).map((a) => a.model_id));
 
-  async function assign(formData: FormData) {
-    "use server";
-    const modelId = formData.get("model_id") as string;
-    await assignModelToClient(clientId, activeYear!.id, modelId);
-  }
-
-  async function saveLamas(formData: FormData) {
-    "use server";
-    await setClientLamasLevel(clientId, activeYear!.id, formData);
-  }
+  const assign = assignModelToClient.bind(null, clientId, activeYear.id);
+  const saveLamas = setClientLamasLevel.bind(null, clientId, activeYear.id);
 
   return (
     <div className="max-w-3xl space-y-8">

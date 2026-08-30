@@ -45,15 +45,21 @@ export async function updateSubModelMonths(subModelId: string, formData: FormDat
 
 export async function addLineItem(subModelId: string, clientId: string, itemType: string) {
   const supabase = await createClient();
-  await supabase.from("budget_line_items").insert({
-    sub_model_id: subModelId,
-    client_id: clientId,
-    item_type: itemType,
-    source: "manual",
-    ...(itemType === "שכר" ? { calc_method: "ימים", spread_method: "לפי_ימים", employer_cost_multiplier: 1.3 } : {}),
-    ...(itemType === "תקורה" ? { overhead_pct: 10 } : {}),
-  });
+  const { data, error } = await supabase
+    .from("budget_line_items")
+    .insert({
+      sub_model_id: subModelId,
+      client_id: clientId,
+      item_type: itemType,
+      source: "manual",
+      ...(itemType === "שכר" ? { calc_method: "ימים", spread_method: "לפי_ימים", employer_cost_multiplier: 1.3 } : {}),
+      ...(itemType === "תקורה" ? { overhead_pct: 10 } : {}),
+    })
+    .select()
+    .single();
   revalidatePath(`/client/models/sub/${subModelId}`);
+  if (error) return { error: error.message, item: null };
+  return { error: null, item: data };
 }
 
 export async function updateLineItem(itemId: string, subModelId: string, formData: FormData) {

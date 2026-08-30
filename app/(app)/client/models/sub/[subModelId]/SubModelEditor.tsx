@@ -111,7 +111,12 @@ export function SubModelEditor({
   }
 
   function handleAddItem(itemType: string) {
-    startTransition(() => addLineItem(subModelId, clientId, itemType));
+    startTransition(async () => {
+      const result = await addLineItem(subModelId, clientId, itemType);
+      if (result.item) {
+        setLineItems((prev) => [...prev, result.item as BudgetLineItem]);
+      }
+    });
   }
 
   function handleDeleteItem(itemId: string) {

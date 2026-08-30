@@ -53,8 +53,9 @@ export async function createClientWithUser(formData: FormData) {
   return { error: null, email, password };
 }
 
-export async function assignModelToClient(clientId: string, yearId: string, modelId: string) {
+export async function assignModelToClient(clientId: string, yearId: string, formData: FormData) {
   await requireAdmin();
+  const modelId = formData.get("model_id") as string;
   const supabase = await createClient();
   const { data: clientYear } = await supabase
     .from("client_years")
