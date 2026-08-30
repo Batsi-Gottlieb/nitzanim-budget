@@ -1,8 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getCurrentProfile } from "@/lib/auth";
 
 function randomPassword() {
   return Math.random().toString(36).slice(2, 10) + Math.random().toString(36).slice(2, 6).toUpperCase() + "!1";
@@ -55,6 +57,29 @@ export async function assignModelToClient(clientId: string, yearId: string, mode
     .upsert({ client_year_id: clientYear!.id, client_id: clientId, model_id: modelId }, { onConflict: "client_year_id,model_id" });
 
   revalidatePath(`/admin/clients/${clientId}`);
+}
+
+export async function impersonateClient(formData: FormData) {
+  const session = await getCurrentProfile();
+  if (session?.profile?.role !== "admin") {
+    throw new Error("פעולה זו זמינה למנהל מערכת בלבד");
+  }
+
+  const clientId = formData.get("client_id") as string;
+  const supabase = await createClient();
+  const { data: client } = await supabase.from("clients").select("contact_email").eq("id", clientId).maybeSingle();
+  if (!client?.contact_email) throw new Error("ללקוח זה אין משתמש מקושר");
+
+  const adminClient = createAdminClient();
+  const { data, error } = await adminClient.auth.admin.generateLink({
+    type: "magiclink",
+    email: client.contact_email,
+  });
+  if (error || !data.properties?.hashed_token) {
+    throw new Error(error?.message ?? "יצירת קישור הכניסה נכשלה");
+  }
+
+  redirect(`/auth/confirm?token_hash=${data.properties.hashed_token}&type=magiclink&next=/`);
 }
 
 export async function setClientLamasLevel(clientId: string, yearId: string, formData: FormData) {
