@@ -27,6 +27,8 @@ export async function updateSubModelMonths(subModelId: string, formData: FormDat
     feeding_days: number | null;
     short_camp_days: number;
     long_camp_days: number;
+    participants_count: number | null;
+    groups_count: number | null;
   }[];
   for (const r of rows) {
     await supabase
@@ -36,6 +38,8 @@ export async function updateSubModelMonths(subModelId: string, formData: FormDat
         feeding_days: r.feeding_days,
         short_camp_days: r.short_camp_days,
         long_camp_days: r.long_camp_days,
+        participants_count: r.participants_count,
+        groups_count: r.groups_count,
       })
       .eq("sub_model_id", subModelId)
       .eq("calendar_month", r.calendar_month);

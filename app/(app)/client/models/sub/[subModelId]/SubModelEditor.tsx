@@ -79,6 +79,8 @@ export function SubModelEditor({
           feeding_days: m.feeding_days,
           short_camp_days: m.short_camp_days,
           long_camp_days: m.long_camp_days,
+          participants_count: m.participants_count,
+          groups_count: m.groups_count,
         }))
       )
     );
@@ -196,6 +198,8 @@ export function SubModelEditor({
             <tr className="border-y border-border bg-surface-muted text-right">
               <th className="px-3 py-2 font-semibold">חודש</th>
               <th className="px-3 py-2 font-semibold">ימי פעילות</th>
+              <th className="px-3 py-2 font-semibold">כמות משתתפים</th>
+              <th className="px-3 py-2 font-semibold">כמות קבוצות</th>
               <th className="px-3 py-2 font-semibold">ימי הזנה</th>
               <th className="px-3 py-2 font-semibold">קייטנה קצרה</th>
               <th className="px-3 py-2 font-semibold">קייטנה ארוכה</th>
@@ -218,6 +222,40 @@ export function SubModelEditor({
                           prev.map((r) =>
                             r.calendar_month === m.calendar_month
                               ? { ...r, activity_days: e.target.value === "" ? null : Number(e.target.value) }
+                              : r
+                          )
+                        )
+                      }
+                      className="w-20 rounded-md border border-border px-2 py-1"
+                    />
+                  </td>
+                  <td className="px-3 py-2">
+                    <input
+                      type="number"
+                      placeholder={String(subModel.participants_count)}
+                      value={row.participants_count ?? ""}
+                      onChange={(e) =>
+                        setMonths((prev) =>
+                          prev.map((r) =>
+                            r.calendar_month === m.calendar_month
+                              ? { ...r, participants_count: e.target.value === "" ? null : Number(e.target.value) }
+                              : r
+                          )
+                        )
+                      }
+                      className="w-20 rounded-md border border-border px-2 py-1"
+                    />
+                  </td>
+                  <td className="px-3 py-2">
+                    <input
+                      type="number"
+                      placeholder={String(subModel.groups_count)}
+                      value={row.groups_count ?? ""}
+                      onChange={(e) =>
+                        setMonths((prev) =>
+                          prev.map((r) =>
+                            r.calendar_month === m.calendar_month
+                              ? { ...r, groups_count: e.target.value === "" ? null : Number(e.target.value) }
                               : r
                           )
                         )

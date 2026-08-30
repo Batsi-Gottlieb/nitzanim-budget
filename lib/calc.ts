@@ -5,6 +5,8 @@ export type ResolvedMonth = {
   calendar_month: number;
   activity_days: number;
   feeding_days: number;
+  participants_count: number;
+  groups_count: number;
 };
 
 const MONTH_COUNT = 10;
@@ -15,7 +17,8 @@ function zeros(): number[] {
 
 export function resolveMonths(
   subModelMonths: SubModelMonth[],
-  yearGeneral: { month_order: number; calendar_month: number; activity_days: number; feeding_days: number }[]
+  yearGeneral: { month_order: number; calendar_month: number; activity_days: number; feeding_days: number }[],
+  defaults: { participants_count: number; groups_count: number }
 ): ResolvedMonth[] {
   const byOrder = new Map(subModelMonths.map((m) => [m.month_order, m]));
   return yearGeneral
@@ -28,6 +31,8 @@ export function resolveMonths(
         calendar_month: g.calendar_month,
         activity_days: override?.activity_days ?? g.activity_days,
         feeding_days: override?.feeding_days ?? g.feeding_days,
+        participants_count: override?.participants_count ?? defaults.participants_count,
+        groups_count: override?.groups_count ?? defaults.groups_count,
       };
     });
 }
@@ -100,8 +105,10 @@ export function computeSubModelBudget(
   lineItems: BudgetLineItem[],
   defaultIncome: { participant: number; ministry: number } | null
 ): SubModelBudgetResult {
-  const months = resolveMonths(subModelMonths, yearGeneral);
-  const groups = subModel.groups_count || 1;
+  const months = resolveMonths(subModelMonths, yearGeneral, {
+    participants_count: subModel.participants_count,
+    groups_count: subModel.groups_count || 1,
+  });
 
   const results: LineItemResult[] = [];
   const wageEnrichConsumMonthly = zeros();
@@ -144,41 +151,43 @@ export function computeSubModelBudget(
       perGroupMonthly.forEach((v, i) => (wageEnrichConsumMonthly[i] += v));
     } else if (item.item_type === "הזנה") {
       months.forEach((m, i) => {
-        perGroupMonthly[i] = (item.meal_cost ?? 0) * (subModel.participants_count || 0) * m.feeding_days;
+        perGroupMonthly[i] = (item.meal_cost ?? 0) * m.participants_count * m.feeding_days;
       });
       perGroupAnnual = perGroupMonthly.reduce((s, v) => s + v, 0);
     } else if (item.item_type === "הכנסה_משתתף" || item.item_type === "הכנסת_משרד") {
       const fallback =
         item.item_type === "הכנסה_משתתף" ? defaultIncome?.participant ?? 0 : defaultIncome?.ministry ?? 0;
-      const perMonthAmount = (item.income_monthly_override ?? fallback) * (subModel.participants_count || 0);
+      const perMonthRate = item.income_monthly_override ?? fallback;
       const active = activeMonthIndexes(months);
       const numActive = subModel.active_months_count || active.length || 1;
-      active.slice(0, numActive).forEach((i) => (perGroupMonthly[i] = perMonthAmount));
-      perGroupAnnual = perMonthAmount * numActive;
+      active.slice(0, numActive).forEach((i) => (perGroupMonthly[i] = perMonthRate * months[i].participants_count));
+      perGroupAnnual = perGroupMonthly.reduce((s, v) => s + v, 0);
     }
     // תקורה rows are computed once, in aggregate, after the loop — skipped here even if present in the array.
     if (item.item_type === "תקורה") continue;
 
+    const totalMonthly = perGroupMonthly.map((v, i) => v * months[i].groups_count);
     results.push({
       item,
       perGroupMonthly,
       perGroupAnnual,
-      totalMonthly: perGroupMonthly.map((v) => v * groups),
-      totalAnnual: perGroupAnnual * groups,
+      totalMonthly,
+      totalAnnual: totalMonthly.reduce((s, v) => s + v, 0),
     });
   }
 
   const overheadPct = lineItems.find((i) => i.item_type === "תקורה")?.overhead_pct ?? 10;
   const overheadPerGroupMonthly = wageEnrichConsumMonthly.map((v) => (v * overheadPct) / 100);
   const overheadPerGroupAnnual = overheadPerGroupMonthly.reduce((s, v) => s + v, 0);
+  const overheadTotalMonthly = overheadPerGroupMonthly.map((v, i) => v * months[i].groups_count);
   const overheadItem: LineItemResult = {
     item:
       lineItems.find((i) => i.item_type === "תקורה") ??
       ({ item_type: "תקורה", overhead_pct: overheadPct } as BudgetLineItem),
     perGroupMonthly: overheadPerGroupMonthly,
     perGroupAnnual: overheadPerGroupAnnual,
-    totalMonthly: overheadPerGroupMonthly.map((v) => v * groups),
-    totalAnnual: overheadPerGroupAnnual * groups,
+    totalMonthly: overheadTotalMonthly,
+    totalAnnual: overheadTotalMonthly.reduce((s, v) => s + v, 0),
   };
 
   const expenseTypes = new Set(["שכר", "חוג_העשרה", "מתכלים", "הזנה", "השתלמויות", "רכזים_קבוע"]);

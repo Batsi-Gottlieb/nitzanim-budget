@@ -113,6 +113,8 @@ export type SubModelMonth = {
   feeding_days: number | null;
   short_camp_days: number;
   long_camp_days: number;
+  participants_count: number | null;
+  groups_count: number | null;
 };
 
 export type BudgetItemType =
