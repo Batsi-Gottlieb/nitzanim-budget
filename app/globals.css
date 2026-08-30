@@ -20,11 +20,11 @@
   --success: #2f7d55;
   --radius: 0.9rem;
 
-  --sidebar-bg: #1c1e22;
-  --sidebar-bg-elevated: #26292e;
-  --sidebar-foreground: #ece7da;
-  --sidebar-foreground-muted: #9b968b;
-  --sidebar-border: #34373d;
+  --sidebar-bg: #fbf8f2;
+  --sidebar-bg-elevated: #f2ecdc;
+  --sidebar-foreground: #23211c;
+  --sidebar-foreground-muted: #6e675a;
+  --sidebar-border: #e6dfcd;
   --sidebar-active-bg: rgba(198, 155, 74, 0.16);
 
   --gold-gradient: linear-gradient(135deg, #e4c07b 0%, #c69b4a 45%, #8f6a2a 100%);

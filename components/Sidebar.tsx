@@ -74,7 +74,7 @@ export function Sidebar({
       ];
 
   return (
-    <aside className="flex w-64 shrink-0 flex-col justify-between bg-sidebar-bg px-4 py-6 text-sidebar-foreground">
+    <aside className="flex w-64 shrink-0 flex-col justify-between border-l border-sidebar-border bg-sidebar-bg px-4 py-6 text-sidebar-foreground">
       <div>
         <div className="mb-8 px-2">
           <LogoLockup size={38} />
