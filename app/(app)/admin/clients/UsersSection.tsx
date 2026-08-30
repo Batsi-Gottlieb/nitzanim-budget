@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState, useTransition } from "react";
-import { addUserToClient, impersonateUser, resetUserPassword, updateUserName } from "../actions";
+import { addUserToClient, impersonateUser, resetUserPassword, updateUserName } from "./actions";
 
 type UserRow = { id: string; email: string | null; full_name: string | null };
 

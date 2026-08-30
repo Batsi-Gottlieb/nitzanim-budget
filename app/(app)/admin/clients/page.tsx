@@ -1,10 +1,15 @@
-import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { CreateClientForm } from "./CreateClientForm";
+import { ClientRow } from "./ClientRow";
 
 export default async function ClientsPage() {
   const supabase = await createClient();
   const { data: clients } = await supabase.from("clients").select("*").order("name");
+
+  const clientIds = (clients ?? []).map((c) => c.id);
+  const { data: allUsers } = clientIds.length
+    ? await supabase.from("profiles").select("id, email, full_name, client_id").in("client_id", clientIds).order("created_at")
+    : { data: [] };
 
   return (
     <div className="max-w-4xl space-y-6">
@@ -17,17 +22,7 @@ export default async function ClientsPage() {
 
       <div className="divide-y divide-border rounded-2xl border border-border bg-surface">
         {(clients ?? []).map((c) => (
-          <Link
-            key={c.id}
-            href={`/admin/clients/${c.id}`}
-            className="flex items-center justify-between px-4 py-3 text-sm hover:bg-surface-muted"
-          >
-            <div>
-              <div className="font-medium">{c.name}</div>
-              <div className="text-xs text-foreground-muted">{c.contact_email}</div>
-            </div>
-            <span className="text-foreground-muted">ניהול ←</span>
-          </Link>
+          <ClientRow key={c.id} client={c} users={(allUsers ?? []).filter((u) => u.client_id === c.id)} />
         ))}
         {(clients ?? []).length === 0 && <div className="px-4 py-3 text-sm text-foreground-muted">אין לקוחות עדיין</div>}
       </div>
