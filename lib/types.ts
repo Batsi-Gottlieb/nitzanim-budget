@@ -122,7 +122,9 @@ export type BudgetItemType =
   | "הזנה"
   | "תקורה"
   | "הכנסה_משתתף"
-  | "הכנסת_משרד";
+  | "הכנסת_משרד"
+  | "השתלמויות"
+  | "רכזים_קבוע";
 
 export type CalcMethod = "ימים" | "שבועות";
 export type SpreadMethod = "לפי_ימים" | "לפי_חודשי_פעילות";
@@ -145,6 +147,7 @@ export type BudgetLineItem = {
   meal_cost: number | null;
   overhead_pct: number | null;
   income_monthly_override: number | null;
+  fixed_monthly_amount: number | null;
   notes: string | null;
   source: "base_default" | "manual";
 };

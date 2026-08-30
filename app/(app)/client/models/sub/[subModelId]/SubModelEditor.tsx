@@ -21,6 +21,8 @@ const ITEM_TYPE_LABELS: Record<string, string> = {
   תקורה: "תקורה",
   הכנסה_משתתף: "הכנסה למשתתף",
   הכנסת_משרד: "הכנסת משרד החינוך",
+  השתלמויות: "השתלמויות",
+  רכזים_קבוע: "רכזים - סכום קבוע",
 };
 
 const ROLE_OPTIONS = ["מוביל", "סייעת", "סייעת_שילוב", "רכז", "אחר"];
@@ -99,6 +101,7 @@ export function SubModelEditor({
     set("meal_cost", item.meal_cost);
     set("overhead_pct", item.overhead_pct);
     set("income_monthly_override", item.income_monthly_override);
+    set("fixed_monthly_amount", item.fixed_monthly_amount);
     set("notes", item.notes);
     startTransition(() => updateLineItem(item.id, subModelId, fd));
   }
@@ -116,7 +119,17 @@ export function SubModelEditor({
     startTransition(() => deleteLineItem(itemId, subModelId));
   }
 
-  const grouped = ["שכר", "חוג_העשרה", "מתכלים", "הזנה", "תקורה", "הכנסה_משתתף", "הכנסת_משרד"].map((t) => ({
+  const grouped = [
+    "שכר",
+    "חוג_העשרה",
+    "מתכלים",
+    "השתלמויות",
+    "רכזים_קבוע",
+    "הזנה",
+    "תקורה",
+    "הכנסה_משתתף",
+    "הכנסת_משרד",
+  ].map((t) => ({
     type: t,
     items: lineItems.filter((i) => i.item_type === t),
   }));
@@ -278,7 +291,7 @@ export function SubModelEditor({
           <div key={g.type} className="rounded-2xl border border-border bg-surface p-4">
             <div className="mb-3 flex items-center justify-between">
               <h3 className="text-sm font-bold">{ITEM_TYPE_LABELS[g.type]}</h3>
-              {(g.type === "שכר" || g.type === "חוג_העשרה") && (
+              {(g.type === "שכר" || g.type === "חוג_העשרה" || g.type === "השתלמויות" || g.type === "רכזים_קבוע") && (
                 <button
                   onClick={() => handleAddItem(g.type)}
                   className="text-xs font-semibold text-primary hover:underline"
@@ -409,7 +422,8 @@ function LineItemRow({
             {input("session_cost", "עלות חוג בודד")}
           </>
         )}
-        {item.item_type === "מתכלים" && input("annual_cost", "עלות שנתית")}
+        {(item.item_type === "מתכלים" || item.item_type === "השתלמויות") && input("annual_cost", "עלות שנתית")}
+        {item.item_type === "רכזים_קבוע" && input("fixed_monthly_amount", "סכום קבוע לחודש")}
         {item.item_type === "הזנה" && input("meal_cost", "עלות מנה")}
         {item.item_type === "תקורה" && input("overhead_pct", "אחוז תקורה", "number", "0.1")}
         {(item.item_type === "הכנסה_משתתף" || item.item_type === "הכנסת_משרד") &&

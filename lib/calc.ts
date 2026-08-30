@@ -128,12 +128,19 @@ export function computeSubModelBudget(
       active.slice(0, numActive).forEach((i) => (perGroupMonthly[i] = monthlyAmount));
       perGroupAnnual = monthlyAmount * numActive;
       perGroupMonthly.forEach((v, i) => (wageEnrichConsumMonthly[i] += v));
-    } else if (item.item_type === "מתכלים") {
+    } else if (item.item_type === "מתכלים" || item.item_type === "השתלמויות") {
       const active = activeMonthIndexes(months);
       const numActive = subModel.active_months_count || active.length || 1;
       const monthlyAmount = (item.annual_cost ?? 0) / numActive;
       active.slice(0, numActive).forEach((i) => (perGroupMonthly[i] = monthlyAmount));
       perGroupAnnual = item.annual_cost ?? 0;
+      perGroupMonthly.forEach((v, i) => (wageEnrichConsumMonthly[i] += v));
+    } else if (item.item_type === "רכזים_קבוע") {
+      const active = activeMonthIndexes(months);
+      const numActive = subModel.active_months_count || active.length || 1;
+      const monthlyAmount = item.fixed_monthly_amount ?? 0;
+      active.slice(0, numActive).forEach((i) => (perGroupMonthly[i] = monthlyAmount));
+      perGroupAnnual = monthlyAmount * numActive;
       perGroupMonthly.forEach((v, i) => (wageEnrichConsumMonthly[i] += v));
     } else if (item.item_type === "הזנה") {
       months.forEach((m, i) => {
@@ -174,7 +181,7 @@ export function computeSubModelBudget(
     totalAnnual: overheadPerGroupAnnual * groups,
   };
 
-  const expenseTypes = new Set(["שכר", "חוג_העשרה", "מתכלים", "הזנה"]);
+  const expenseTypes = new Set(["שכר", "חוג_העשרה", "מתכלים", "הזנה", "השתלמויות", "רכזים_קבוע"]);
   const incomeTypes = new Set(["הכנסה_משתתף", "הכנסת_משרד"]);
 
   const expensesMonthly = zeros();
@@ -202,4 +209,112 @@ export function computeSubModelBudget(
 /** Slice a 10-month breakdown to a "budget as of month N" cut (1..10, inclusive from the start of the year). */
 export function cutToMonth(monthly: number[], uptoMonthOrder: number): number[] {
   return monthly.map((v, i) => (i + 1 <= uptoMonthOrder ? v : 0));
+}
+
+export type ReportRow = { label: string; perGroupMonthly: number[]; totalMonthly: number[] };
+
+const REPORT_ROW_DEFS: { label: string; match: (r: LineItemResult) => boolean }[] = [
+  { label: 'סה"כ עלויות מובילה', match: (r) => r.item.item_type === "שכר" && r.item.role_label === "מוביל" },
+  { label: 'סה"כ עלויות סייעת', match: (r) => r.item.item_type === "שכר" && r.item.role_label === "סייעת" },
+  { label: "השתלמויות", match: (r) => r.item.item_type === "השתלמויות" },
+  { label: "רכזים לבעלויות", match: (r) => r.item.item_type === "שכר" && r.item.role_label === "רכז" },
+  { label: 'סה"כ עלות רכזים לחודש', match: (r) => r.item.item_type === "רכזים_קבוע" },
+  { label: "סייעות שילוב", match: (r) => r.item.item_type === "שכר" && r.item.role_label === "סייעת_שילוב" },
+  {
+    label: "שכר אחר",
+    match: (r) =>
+      r.item.item_type === "שכר" && !["מוביל", "סייעת", "רכז", "סייעת_שילוב"].includes(r.item.role_label ?? ""),
+  },
+  { label: "העשרה", match: (r) => r.item.item_type === "חוג_העשרה" },
+  { label: "ציוד מתכלה", match: (r) => r.item.item_type === "מתכלים" },
+];
+
+/**
+ * Categorizes a sub-model's computed line items into the office's fixed report
+ * row structure (one row per role/category, matching the reference workbook),
+ * summing multiple line items of the same category into a single row.
+ */
+export function summarizeForReport(result: SubModelBudgetResult): {
+  costRows: ReportRow[];
+  subtotalBeforeFeedingOverhead: ReportRow;
+  feeding: ReportRow;
+  overhead: ReportRow;
+  totalCosts: ReportRow;
+  participantIncome: ReportRow;
+  ministryIncome: ReportRow;
+  totalIncome: ReportRow;
+  balance: ReportRow;
+} {
+  const zero = () => new Array(MONTH_COUNT).fill(0);
+  const add = (a: number[], b: number[]) => a.map((v, i) => v + b[i]);
+
+  const costRows: ReportRow[] = REPORT_ROW_DEFS.map((def) => {
+    const matching = result.items.filter(def.match);
+    return {
+      label: def.label,
+      perGroupMonthly: matching.reduce((acc, r) => add(acc, r.perGroupMonthly), zero()),
+      totalMonthly: matching.reduce((acc, r) => add(acc, r.totalMonthly), zero()),
+    };
+  }).filter((row) => row.totalMonthly.some((v) => v !== 0));
+
+  const subtotalBeforeFeedingOverhead: ReportRow = {
+    label: 'סה"כ עלויות לפני הזנה ותקורה',
+    perGroupMonthly: costRows.reduce((acc, r) => add(acc, r.perGroupMonthly), zero()),
+    totalMonthly: costRows.reduce((acc, r) => add(acc, r.totalMonthly), zero()),
+  };
+
+  const feedingItems = result.items.filter((r) => r.item.item_type === "הזנה");
+  const feeding: ReportRow = {
+    label: "הזנה",
+    perGroupMonthly: feedingItems.reduce((acc, r) => add(acc, r.perGroupMonthly), zero()),
+    totalMonthly: feedingItems.reduce((acc, r) => add(acc, r.totalMonthly), zero()),
+  };
+
+  const overhead: ReportRow = {
+    label: "תקורה",
+    perGroupMonthly: result.overhead.perGroupMonthly,
+    totalMonthly: result.overhead.totalMonthly,
+  };
+
+  const totalCosts: ReportRow = {
+    label: 'סה"כ עלויות',
+    perGroupMonthly: add(add(subtotalBeforeFeedingOverhead.perGroupMonthly, feeding.perGroupMonthly), overhead.perGroupMonthly),
+    totalMonthly: add(add(subtotalBeforeFeedingOverhead.totalMonthly, feeding.totalMonthly), overhead.totalMonthly),
+  };
+
+  const participantItems = result.items.filter((r) => r.item.item_type === "הכנסה_משתתף");
+  const ministryItems = result.items.filter((r) => r.item.item_type === "הכנסת_משרד");
+  const participantIncome: ReportRow = {
+    label: "הכנסות משתתפים",
+    perGroupMonthly: participantItems.reduce((acc, r) => add(acc, r.perGroupMonthly), zero()),
+    totalMonthly: participantItems.reduce((acc, r) => add(acc, r.totalMonthly), zero()),
+  };
+  const ministryIncome: ReportRow = {
+    label: "הכנסות משרד החינוך",
+    perGroupMonthly: ministryItems.reduce((acc, r) => add(acc, r.perGroupMonthly), zero()),
+    totalMonthly: ministryItems.reduce((acc, r) => add(acc, r.totalMonthly), zero()),
+  };
+  const totalIncome: ReportRow = {
+    label: 'סה"כ הכנסות',
+    perGroupMonthly: add(participantIncome.perGroupMonthly, ministryIncome.perGroupMonthly),
+    totalMonthly: add(participantIncome.totalMonthly, ministryIncome.totalMonthly),
+  };
+
+  const balance: ReportRow = {
+    label: "יתרה",
+    perGroupMonthly: totalIncome.perGroupMonthly.map((v, i) => v - totalCosts.perGroupMonthly[i]),
+    totalMonthly: totalIncome.totalMonthly.map((v, i) => v - totalCosts.totalMonthly[i]),
+  };
+
+  return {
+    costRows,
+    subtotalBeforeFeedingOverhead,
+    feeding,
+    overhead,
+    totalCosts,
+    participantIncome,
+    ministryIncome,
+    totalIncome,
+    balance,
+  };
 }

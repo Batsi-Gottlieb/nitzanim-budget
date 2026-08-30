@@ -82,6 +82,7 @@ export async function updateLineItem(itemId: string, subModelId: string, formDat
       meal_cost: num("meal_cost"),
       overhead_pct: num("overhead_pct"),
       income_monthly_override: num("income_monthly_override"),
+      fixed_monthly_amount: num("fixed_monthly_amount"),
       notes: str("notes"),
       source: "manual",
       updated_at: new Date().toISOString(),
