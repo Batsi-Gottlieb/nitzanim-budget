@@ -185,7 +185,7 @@ export function SubModelEditor({
       <section className="rounded-2xl border border-border bg-surface p-5">
         <h2 className="mb-3 text-sm font-semibold">הגדרות מודל משנה</h2>
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-          <Field label="כמות משתתפים">
+          <Field label="כמות משתתפים ממוצעת לקבוצה">
             <input
               type="number"
               value={subModel.participants_count}
@@ -200,6 +200,11 @@ export function SubModelEditor({
               onChange={(e) => setSubModel({ ...subModel, groups_count: Number(e.target.value) })}
               className="w-full rounded-md border border-border px-2 py-1.5 text-sm"
             />
+          </Field>
+          <Field label="סך כמות משתתפים">
+            <div className="rounded-md border border-border bg-surface px-2 py-1.5 text-sm tabular-nums">
+              {fmt(subModel.participants_count * subModel.groups_count)}
+            </div>
           </Field>
           <Field label="ממוצע שבועות לחודש">
             <input
