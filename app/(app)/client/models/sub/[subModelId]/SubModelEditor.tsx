@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { BudgetLineItem, MONTHS, SubModel, SubModelMonth } from "@/lib/types";
-import { computeSubModelBudget } from "@/lib/calc";
+import { computeSubModelBudget, summarizeForReport } from "@/lib/calc";
 import {
   addLineItem,
   deleteLineItem,
@@ -52,7 +52,11 @@ const CATEGORY_GROUPS: { category: string; types: string[] }[] = [
 
 const ROLE_OPTIONS = ["מוביל", "סייעת", "סייעת_שניה", "סייעת_שילוב", "רכז", "אחר"];
 const BUDGET_TIER_OPTIONS = ["בסיסי", "מורחב"];
-const CAMP_UNIT_ITEM_TYPES = ["העשרה_קייטנה", "הזנה_קייטנה"];
+const CAMP_UNIT_LABELS: Record<string, { unit: string; count: string }> = {
+  העשרה_קייטנה: { unit: "עלות פעילות העשרה ליום קייטנה", count: "כמות פעילויות העשרה ליום קייטנה ממוצע" },
+  הזנה_קייטנה: { unit: "עלות מנה ליום קייטנה", count: "כמות מנות ליום קייטנה ממוצע" },
+};
+const CAMP_UNIT_ITEM_TYPES = Object.keys(CAMP_UNIT_LABELS);
 const FLAT_ANNUAL_ITEM_TYPES = [
   "מתכלים",
   "תקורה",
@@ -62,7 +66,6 @@ const FLAT_ANNUAL_ITEM_TYPES = [
   "פעילות_אחר",
   "כיבוד",
   "בונוס",
-  "בונוס_קייטנה",
   "מענק",
   "תקורה_רשות",
 ];
@@ -533,29 +536,16 @@ function LineItemRow({
             {input("employer_cost_multiplier", "מכפיל עלות מעביד", "number", "0.001")}
             {input("hours_per_day", "שעות ליום")}
             {!item.camp_period && (
-              <>
-                {input("hours_per_week", "שעות בשבוע (לשיטת שבועות)")}
-                <Field label="שיטת חישוב">
-                  <select
-                    value={item.calc_method ?? "ימים"}
-                    onChange={(e) => onChange({ calc_method: e.target.value as BudgetLineItem["calc_method"] })}
-                    className="w-full rounded-md border border-border px-2 py-1.5 text-sm"
-                  >
-                    <option value="ימים">לפי סך ימים</option>
-                    <option value="שבועות">לפי שבועות</option>
-                  </select>
-                </Field>
-                <Field label="פריסה חודשית">
-                  <select
-                    value={item.spread_method ?? "לפי_ימים"}
-                    onChange={(e) => onChange({ spread_method: e.target.value as BudgetLineItem["spread_method"] })}
-                    className="w-full rounded-md border border-border px-2 py-1.5 text-sm"
-                  >
-                    <option value="לפי_ימים">לפי ימים</option>
-                    <option value="לפי_חודשי_פעילות">לפי חודשי פעילות</option>
-                  </select>
-                </Field>
-              </>
+              <Field label="פריסה חודשית">
+                <select
+                  value={item.spread_method ?? "לפי_ימים"}
+                  onChange={(e) => onChange({ spread_method: e.target.value as BudgetLineItem["spread_method"] })}
+                  className="w-full rounded-md border border-border px-2 py-1.5 text-sm"
+                >
+                  <option value="לפי_ימים">לפי ימים</option>
+                  <option value="לפי_חודשי_פעילות">לפי חודשי פעילות</option>
+                </select>
+              </Field>
             )}
           </>
         )}
@@ -570,8 +560,8 @@ function LineItemRow({
           input("annual_cost", "עלות שנתית")}
         {CAMP_UNIT_ITEM_TYPES.includes(item.item_type) && (
           <>
-            {input("session_cost", "עלות ליחידה ליום קייטנה")}
-            {input("weekly_count", "כמות יחידות ממוצעת ליום קייטנה")}
+            {input("session_cost", CAMP_UNIT_LABELS[item.item_type].unit)}
+            {input("weekly_count", CAMP_UNIT_LABELS[item.item_type].count)}
             <Field label="סיכום — ערך יום קייטנה ממוצע">
               <div className="rounded-md border border-border bg-surface px-2 py-1.5 text-sm tabular-nums">
                 {fmt((item.session_cost ?? 0) * (item.weekly_count ?? 0))}
@@ -579,6 +569,7 @@ function LineItemRow({
             </Field>
           </>
         )}
+        {item.item_type === "בונוס_קייטנה" && input("session_cost", "בונוס ליום קייטנה")}
         {item.item_type === "השתלמויות" && (
           <>
             <Field label="תפקיד">
@@ -662,11 +653,14 @@ function ReportTable({
   const visibleMonths = MONTHS.filter((m) => m.month_order <= cutoffMonth);
   const sum = (arr: number[]) => arr.slice(0, cutoffMonth).reduce((s, v) => s + v, 0);
 
-  const rows = result.items.map((r) => ({
-    label: r.item.item_type === "שכר" ? r.item.role_label ?? ITEM_TYPE_LABELS[r.item.item_type] : ITEM_TYPE_LABELS[r.item.item_type],
-    monthly: r.totalMonthly,
-    type: r.item.item_type,
-  }));
+  const summary = summarizeForReport(result);
+  const costRows = [...summary.costRows, summary.feeding, summary.overhead].filter((r) =>
+    r.totalMonthly.some((v) => v !== 0)
+  );
+  const incomeRows = [summary.participantIncome, summary.ministryIncome, ...summary.incomeRows].filter((r) =>
+    r.totalMonthly.some((v) => v !== 0)
+  );
+  const rows = costRows.map((r) => ({ label: r.label, monthly: r.totalMonthly }));
 
   return (
     <div className="overflow-x-auto">
@@ -684,7 +678,7 @@ function ReportTable({
         </thead>
         <tbody>
           {rows.map((r) => (
-            <tr key={r.label + r.type} className="border-b border-border">
+            <tr key={r.label} className="border-b border-border">
               <td className="px-3 py-2">{r.label}</td>
               {visibleMonths.map((m) => (
                 <td key={m.month_order} className="px-3 py-2 tabular-nums">
@@ -703,6 +697,17 @@ function ReportTable({
             ))}
             <td className="px-3 py-2 tabular-nums">{fmt(sum(result.expensesMonthly))}</td>
           </tr>
+          {incomeRows.map((r) => (
+            <tr key={r.label} className="border-b border-border">
+              <td className="px-3 py-2">{r.label}</td>
+              {visibleMonths.map((m) => (
+                <td key={m.month_order} className="px-3 py-2 tabular-nums">
+                  {fmt(r.totalMonthly[m.month_order - 1])}
+                </td>
+              ))}
+              <td className="px-3 py-2 font-semibold tabular-nums">{fmt(sum(r.totalMonthly))}</td>
+            </tr>
+          ))}
           <tr className="border-b border-border font-semibold text-success">
             <td className="px-3 py-2">סה&quot;כ הכנסות</td>
             {visibleMonths.map((m) => (

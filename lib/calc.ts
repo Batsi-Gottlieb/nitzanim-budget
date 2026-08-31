@@ -37,13 +37,15 @@ const FLAT_ANNUAL_TYPES = new Set<BudgetItemType>([
   "פעילות_אחר",
   "כיבוד",
   "בונוס",
-  "בונוס_קייטנה",
   "מענק",
   "תקורה_רשות",
 ]);
 
 /** Camp items priced as unit cost × avg units per camp day (short + long combined), for that month. */
 const CAMP_UNIT_TYPES = new Set<BudgetItemType>(["העשרה_קייטנה", "הזנה_קייטנה"]);
+
+/** Camp items priced as a single flat rate × camp days that month (short + long combined). */
+const CAMP_PER_DAY_TYPES = new Set<BudgetItemType>(["בונוס_קייטנה"]);
 
 const INCOME_TYPES = new Set<BudgetItemType>([
   "הכנסה_משתתף",
@@ -212,6 +214,12 @@ export function computeSubModelBudget(
         perGroupMonthly[i] = unitCost * avgUnitsPerCampDay * (m.short_camp_days + m.long_camp_days);
       });
       perGroupAnnual = perGroupMonthly.reduce((s, v) => s + v, 0);
+    } else if (CAMP_PER_DAY_TYPES.has(item.item_type)) {
+      const ratePerCampDay = item.session_cost ?? 0;
+      months.forEach((m, i) => {
+        perGroupMonthly[i] = ratePerCampDay * (m.short_camp_days + m.long_camp_days);
+      });
+      perGroupAnnual = perGroupMonthly.reduce((s, v) => s + v, 0);
     } else if (FLAT_ANNUAL_TYPES.has(item.item_type)) {
       const active = activeMonthIndexes(months);
       const numActive = subModel.active_months_count || active.length || 1;
@@ -326,25 +334,12 @@ const REPORT_ROW_DEFS: { label: string; match: (r: LineItemResult) => boolean }[
       r.item.item_type === "שכר" && !r.item.camp_period && !REGULAR_ROLES.includes(r.item.role_label ?? ""),
   },
   {
-    label: "מוביל קייטנה",
-    match: (r) => r.item.item_type === "שכר" && !!r.item.camp_period && r.item.role_label === "מוביל",
+    label: "שכר קייטנה ימים ארוכים",
+    match: (r) => r.item.item_type === "שכר" && r.item.camp_period === "ארוך",
   },
   {
-    label: "סייעת קייטנה",
-    match: (r) => r.item.item_type === "שכר" && !!r.item.camp_period && r.item.role_label === "סייעת",
-  },
-  {
-    label: "סייעת שניה קייטנה",
-    match: (r) => r.item.item_type === "שכר" && !!r.item.camp_period && r.item.role_label === "סייעת_שניה",
-  },
-  {
-    label: "רכז קייטנה",
-    match: (r) => r.item.item_type === "שכר" && !!r.item.camp_period && r.item.role_label === "רכז",
-  },
-  {
-    label: "שכר קייטנה אחר",
-    match: (r) =>
-      r.item.item_type === "שכר" && !!r.item.camp_period && !REGULAR_ROLES.includes(r.item.role_label ?? ""),
+    label: "שכר קייטנה ימים קצרים",
+    match: (r) => r.item.item_type === "שכר" && r.item.camp_period === "קצר",
   },
   { label: "בונוס", match: (r) => r.item.item_type === "בונוס" },
   { label: "בונוס קייטנה", match: (r) => r.item.item_type === "בונוס_קייטנה" },
