@@ -16,16 +16,57 @@ type YearGeneralRow = { calendar_month: number; month_order: number; activity_da
 const ITEM_TYPE_LABELS: Record<string, string> = {
   שכר: "שכר",
   חוג_העשרה: "חוגי העשרה",
-  מתכלים: "מתכלים",
+  מתכלים: "ציוד מתכלה",
   הזנה: "הזנה",
   תקורה: "תקורה",
   הכנסה_משתתף: "הכנסה למשתתף",
   הכנסת_משרד: "הכנסת משרד החינוך",
   השתלמויות: "השתלמויות",
   רכזים_קבוע: "רכזים - סכום קבוע",
+  בונוס: "בונוס",
+  בונוס_קייטנה: "בונוס קייטנה",
+  מענק: "מענק",
+  ערכות: "ערכות",
+  נקיון: "ניקיון",
+  שיפוי_בעלויות: "שיפוי בעלויות",
+  פעילות_אחר: "פעילות - אחר",
+  העשרה_קייטנה: "העשרה קייטנה",
+  הזנה_קייטנה: "הזנה קייטנה",
+  כיבוד: "כיבוד",
+  תקורה_רשות: "תקורה רשות",
+  הכנסה_משתתף_תוספתי: "הכנסת משתתפים תוספתי",
+  הכנסה_משתתף_קייטנה: "הכנסת משתתפים קייטנה",
+  הכנסת_עירייה: "הכנסת עירייה השלמה",
 };
 
-const ROLE_OPTIONS = ["מוביל", "סייעת", "סייעת_שילוב", "רכז", "אחר"];
+const CATEGORY_GROUPS: { category: string; types: string[] }[] = [
+  { category: "שכר", types: ["שכר", "השתלמויות", "רכזים_קבוע", "בונוס", "בונוס_קייטנה", "מענק"] },
+  { category: "פעילות", types: ["חוג_העשרה", "מתכלים", "ערכות", "נקיון", "שיפוי_בעלויות", "פעילות_אחר", "העשרה_קייטנה"] },
+  { category: "הזנה", types: ["הזנה", "הזנה_קייטנה", "כיבוד"] },
+  { category: "תקורה", types: ["תקורה", "תקורה_רשות"] },
+  {
+    category: "הכנסות",
+    types: ["הכנסה_משתתף", "הכנסה_משתתף_תוספתי", "הכנסה_משתתף_קייטנה", "הכנסת_משרד", "הכנסת_עירייה"],
+  },
+];
+
+const ROLE_OPTIONS = ["מוביל", "סייעת", "סייעת_שניה", "סייעת_שילוב", "רכז", "אחר"];
+const BUDGET_TIER_OPTIONS = ["בסיסי", "מורחב"];
+const FLAT_ANNUAL_ITEM_TYPES = [
+  "מתכלים",
+  "תקורה",
+  "ערכות",
+  "נקיון",
+  "שיפוי_בעלויות",
+  "פעילות_אחר",
+  "העשרה_קייטנה",
+  "הזנה_קייטנה",
+  "כיבוד",
+  "בונוס",
+  "בונוס_קייטנה",
+  "מענק",
+  "תקורה_רשות",
+];
 
 function fmt(n: number) {
   return n.toLocaleString("he-IL", { maximumFractionDigits: 0 });
@@ -105,6 +146,8 @@ export function SubModelEditor({
     set("income_monthly_override", item.income_monthly_override);
     set("fixed_monthly_amount", item.fixed_monthly_amount);
     set("hours_count", item.hours_count);
+    set("budget_tier", item.budget_tier);
+    set("camp_period", item.camp_period);
     set("notes", item.notes);
     startTransition(() => updateLineItem(item.id, subModelId, fd));
   }
@@ -127,19 +170,12 @@ export function SubModelEditor({
     startTransition(() => deleteLineItem(itemId, subModelId));
   }
 
-  const grouped = [
-    "שכר",
-    "חוג_העשרה",
-    "מתכלים",
-    "השתלמויות",
-    "רכזים_קבוע",
-    "הזנה",
-    "תקורה",
-    "הכנסה_משתתף",
-    "הכנסת_משרד",
-  ].map((t) => ({
-    type: t,
-    items: lineItems.filter((i) => i.item_type === t),
+  const categoryGroups = CATEGORY_GROUPS.map((cat) => ({
+    category: cat.category,
+    groups: cat.types.map((t) => ({
+      type: t,
+      items: lineItems.filter((i) => i.item_type === t),
+    })),
   }));
 
   return (
@@ -375,33 +411,36 @@ export function SubModelEditor({
         </div>
       </section>
 
-      <section className="space-y-6">
+      <section className="space-y-8">
         <h2 className="text-lg font-semibold">סעיפי תקציב</h2>
-        {grouped.map((g) => (
-          <div key={g.type} className="rounded-2xl border border-border bg-surface p-4">
-            <div className="mb-3 flex items-center justify-between">
-              <h3 className="text-sm font-bold">{ITEM_TYPE_LABELS[g.type]}</h3>
-              {(g.type === "שכר" || g.type === "חוג_העשרה" || g.type === "השתלמויות" || g.type === "רכזים_קבוע") && (
-                <button
-                  onClick={() => handleAddItem(g.type)}
-                  className="text-xs font-semibold text-primary hover:underline"
-                >
-                  + הוספת שורה
-                </button>
-              )}
-            </div>
-            <div className="space-y-3">
-              {g.items.map((item) => (
-                <LineItemRow
-                  key={item.id}
-                  item={item}
-                  onChange={(patch) => updateItemLocal(item.id, patch)}
-                  onSave={() => saveLineItem(lineItems.find((i) => i.id === item.id)!)}
-                  onDelete={() => handleDeleteItem(item.id)}
-                />
-              ))}
-              {g.items.length === 0 && <p className="text-xs text-foreground-muted">אין שורות מסוג זה</p>}
-            </div>
+        {categoryGroups.map((cat) => (
+          <div key={cat.category} className="space-y-4">
+            <h3 className="text-base font-bold text-primary">{cat.category}</h3>
+            {cat.groups.map((g) => (
+              <div key={g.type} className="rounded-2xl border border-border bg-surface p-4">
+                <div className="mb-3 flex items-center justify-between">
+                  <h4 className="text-sm font-bold">{ITEM_TYPE_LABELS[g.type]}</h4>
+                  <button
+                    onClick={() => handleAddItem(g.type)}
+                    className="text-xs font-semibold text-primary hover:underline"
+                  >
+                    + הוספת שורה
+                  </button>
+                </div>
+                <div className="space-y-3">
+                  {g.items.map((item) => (
+                    <LineItemRow
+                      key={item.id}
+                      item={item}
+                      onChange={(patch) => updateItemLocal(item.id, patch)}
+                      onSave={() => saveLineItem(lineItems.find((i) => i.id === item.id)!)}
+                      onDelete={() => handleDeleteItem(item.id)}
+                    />
+                  ))}
+                  {g.items.length === 0 && <p className="text-xs text-foreground-muted">אין שורות מסוג זה</p>}
+                </div>
+              </div>
+            ))}
           </div>
         ))}
       </section>
@@ -480,30 +519,45 @@ function LineItemRow({
                 ))}
               </select>
             </Field>
+            <Field label="סוג יום (קייטנה)">
+              <select
+                value={item.camp_period ?? ""}
+                onChange={(e) => onChange({ camp_period: (e.target.value || null) as BudgetLineItem["camp_period"] })}
+                className="w-full rounded-md border border-border px-2 py-1.5 text-sm"
+              >
+                <option value="">לא קייטנה</option>
+                <option value="ארוך">ימים ארוכים</option>
+                <option value="קצר">ימים קצרים</option>
+              </select>
+            </Field>
             {input("hourly_rate", "תעריף לשעה")}
             {input("employer_cost_multiplier", "מכפיל עלות מעביד", "number", "0.001")}
             {input("hours_per_day", "שעות ליום")}
-            {input("hours_per_week", "שעות בשבוע (לשיטת שבועות)")}
-            <Field label="שיטת חישוב">
-              <select
-                value={item.calc_method ?? "ימים"}
-                onChange={(e) => onChange({ calc_method: e.target.value as BudgetLineItem["calc_method"] })}
-                className="w-full rounded-md border border-border px-2 py-1.5 text-sm"
-              >
-                <option value="ימים">לפי סך ימים</option>
-                <option value="שבועות">לפי שבועות</option>
-              </select>
-            </Field>
-            <Field label="פריסה חודשית">
-              <select
-                value={item.spread_method ?? "לפי_ימים"}
-                onChange={(e) => onChange({ spread_method: e.target.value as BudgetLineItem["spread_method"] })}
-                className="w-full rounded-md border border-border px-2 py-1.5 text-sm"
-              >
-                <option value="לפי_ימים">לפי ימים</option>
-                <option value="לפי_חודשי_פעילות">לפי חודשי פעילות</option>
-              </select>
-            </Field>
+            {!item.camp_period && (
+              <>
+                {input("hours_per_week", "שעות בשבוע (לשיטת שבועות)")}
+                <Field label="שיטת חישוב">
+                  <select
+                    value={item.calc_method ?? "ימים"}
+                    onChange={(e) => onChange({ calc_method: e.target.value as BudgetLineItem["calc_method"] })}
+                    className="w-full rounded-md border border-border px-2 py-1.5 text-sm"
+                  >
+                    <option value="ימים">לפי סך ימים</option>
+                    <option value="שבועות">לפי שבועות</option>
+                  </select>
+                </Field>
+                <Field label="פריסה חודשית">
+                  <select
+                    value={item.spread_method ?? "לפי_ימים"}
+                    onChange={(e) => onChange({ spread_method: e.target.value as BudgetLineItem["spread_method"] })}
+                    className="w-full rounded-md border border-border px-2 py-1.5 text-sm"
+                  >
+                    <option value="לפי_ימים">לפי ימים</option>
+                    <option value="לפי_חודשי_פעילות">לפי חודשי פעילות</option>
+                  </select>
+                </Field>
+              </>
+            )}
           </>
         )}
         {item.item_type === "חוג_העשרה" && (
@@ -512,7 +566,9 @@ function LineItemRow({
             {input("session_cost", "עלות חוג בודד")}
           </>
         )}
-        {item.item_type === "מתכלים" && input("annual_cost", "עלות שנתית")}
+        {FLAT_ANNUAL_ITEM_TYPES.includes(item.item_type) &&
+          item.item_type !== "תקורה" &&
+          input("annual_cost", "עלות שנתית")}
         {item.item_type === "השתלמויות" && (
           <>
             <Field label="תפקיד">
@@ -536,8 +592,40 @@ function LineItemRow({
         {item.item_type === "רכזים_קבוע" && input("fixed_monthly_amount", "סכום קבוע לחודש")}
         {item.item_type === "הזנה" && input("meal_cost", "עלות מנה")}
         {item.item_type === "תקורה" && input("annual_cost", "עלות תקורה שנתית")}
-        {(item.item_type === "הכנסה_משתתף" || item.item_type === "הכנסת_משרד") &&
+        {(
+          [
+            "הכנסה_משתתף",
+            "הכנסה_משתתף_תוספתי",
+            "הכנסה_משתתף_קייטנה",
+            "הכנסת_משרד",
+            "הכנסת_עירייה",
+          ] as string[]
+        ).includes(item.item_type) &&
           input("income_monthly_override", "סכום לחודש למשתתף (ברירת מחדל מבסיס הנתונים אם ריק)")}
+        <Field label="תקציב בסיסי / מורחב">
+          <select
+            value={item.budget_tier}
+            disabled={item.item_type === "הכנסה_משתתף_תוספתי"}
+            onChange={(e) => onChange({ budget_tier: e.target.value as BudgetLineItem["budget_tier"] })}
+            className="w-full rounded-md border border-border px-2 py-1.5 text-sm disabled:opacity-60"
+          >
+            {BUDGET_TIER_OPTIONS.map((t) => (
+              <option key={t} value={t}>
+                {t}
+              </option>
+            ))}
+          </select>
+        </Field>
+      </div>
+      <div className="mt-2">
+        <Field label="הערה">
+          <input
+            type="text"
+            value={item.notes ?? ""}
+            onChange={(e) => onChange({ notes: e.target.value || null })}
+            className="w-full rounded-md border border-border px-2 py-1.5 text-sm"
+          />
+        </Field>
       </div>
       <div className="mt-2 flex items-center gap-3">
         <button onClick={onSave} className="text-xs font-semibold text-primary hover:underline">

@@ -58,6 +58,7 @@ export async function addLineItem(subModelId: string, clientId: string, itemType
       client_id: clientId,
       item_type: itemType,
       source: "manual",
+      budget_tier: itemType === "הכנסה_משתתף_תוספתי" ? "מורחב" : "בסיסי",
       ...(itemType === "שכר" ? { calc_method: "ימים", spread_method: "לפי_ימים", employer_cost_multiplier: 1.3 } : {}),
     })
     .select()
@@ -77,6 +78,14 @@ export async function updateLineItem(itemId: string, subModelId: string, formDat
     const v = formData.get(key);
     return v === null || v === "" ? null : (v as string);
   };
+
+  const { data: existing } = await supabase
+    .from("budget_line_items")
+    .select("item_type")
+    .eq("id", itemId)
+    .maybeSingle();
+  const budgetTier = existing?.item_type === "הכנסה_משתתף_תוספתי" ? "מורחב" : str("budget_tier") ?? "בסיסי";
+
   await supabase
     .from("budget_line_items")
     .update({
@@ -94,6 +103,8 @@ export async function updateLineItem(itemId: string, subModelId: string, formDat
       income_monthly_override: num("income_monthly_override"),
       fixed_monthly_amount: num("fixed_monthly_amount"),
       hours_count: num("hours_count"),
+      budget_tier: budgetTier,
+      camp_period: str("camp_period"),
       notes: str("notes"),
       source: "manual",
       updated_at: new Date().toISOString(),

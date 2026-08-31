@@ -3,8 +3,10 @@ import { createClient } from "@/lib/supabase/server";
 import { computeSubModelBudget, summarizeForReport } from "@/lib/calc";
 import { buildClientAnnualReport, type SubModelReportEntry } from "@/lib/excelReport";
 
-export async function GET(_request: Request, { params }: { params: Promise<{ clientId: string }> }) {
+export async function GET(request: Request, { params }: { params: Promise<{ clientId: string }> }) {
   const { clientId } = await params;
+  const tierParam = new URL(request.url).searchParams.get("tier");
+  const tierFilter = tierParam === "basic" ? "בסיסי" : "all";
   const supabase = await createClient();
 
   const { data: client } = await supabase.from("clients").select("*").eq("id", clientId).maybeSingle();
@@ -66,14 +68,14 @@ export async function GET(_request: Request, { params }: { params: Promise<{ cli
       name: sm.name,
       modelName: model.name,
       category: model.category,
-      summary: summarizeForReport(result),
+      summary: summarizeForReport(result, { tierFilter }),
     };
   });
 
   const wb = buildClientAnnualReport(client.name, activeYear.hebrew_name, entries);
   const buffer = await wb.xlsx.writeBuffer();
 
-  const filename = `${client.name}-דוח-תקציב-שנתי.xlsx`;
+  const filename = `${client.name}-דוח-תקציב-שנתי-${tierFilter === "בסיסי" ? "בסיסי" : "מלא"}.xlsx`;
   return new NextResponse(buffer, {
     headers: {
       "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",

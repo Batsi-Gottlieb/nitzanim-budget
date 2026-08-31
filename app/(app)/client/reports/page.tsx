@@ -123,12 +123,20 @@ export default async function ClientReportsPage() {
             תצוגת תקציב לפי חודשים ברמות מודל-משנה ← מודל ← גנים/בתי&quot;ס ← מאוחד, עם אפשרות חתך עד חודש נבחר.
           </p>
         </div>
-        <a
-          href={`/api/clients/${clientId}/export`}
-          className="rounded-lg border border-border bg-surface px-4 py-2 text-sm font-semibold hover:bg-surface-muted"
-        >
-          ייצוא דוח שנתי מלא
-        </a>
+        <div className="flex gap-2">
+          <a
+            href={`/api/clients/${clientId}/export?tier=basic`}
+            className="rounded-lg border border-border bg-surface px-4 py-2 text-sm font-semibold hover:bg-surface-muted"
+          >
+            ייצוא (בסיס בלבד)
+          </a>
+          <a
+            href={`/api/clients/${clientId}/export?tier=all`}
+            className="rounded-lg border border-border bg-surface px-4 py-2 text-sm font-semibold hover:bg-surface-muted"
+          >
+            ייצוא (כולל מורחב)
+          </a>
+        </div>
       </div>
       <ReportsTree root={consolidated} />
     </div>

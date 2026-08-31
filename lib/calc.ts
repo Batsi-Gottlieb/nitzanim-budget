@@ -1,4 +1,56 @@
-import { BudgetLineItem, SubModel, SubModelMonth } from "./types";
+import { BudgetItemType, BudgetLineItem, SubModel, SubModelMonth } from "./types";
+
+type ReportCategory = "שכר" | "פעילות" | "הזנה" | "תקורה" | "הכנסות_משתתפים" | "הכנסות_מוסדי";
+
+const CATEGORY_OF: Record<BudgetItemType, ReportCategory> = {
+  שכר: "שכר",
+  השתלמויות: "שכר",
+  רכזים_קבוע: "שכר",
+  בונוס: "שכר",
+  בונוס_קייטנה: "שכר",
+  מענק: "שכר",
+  חוג_העשרה: "פעילות",
+  מתכלים: "פעילות",
+  ערכות: "פעילות",
+  נקיון: "פעילות",
+  שיפוי_בעלויות: "פעילות",
+  פעילות_אחר: "פעילות",
+  העשרה_קייטנה: "פעילות",
+  הזנה: "הזנה",
+  הזנה_קייטנה: "הזנה",
+  כיבוד: "הזנה",
+  תקורה: "תקורה",
+  תקורה_רשות: "תקורה",
+  הכנסה_משתתף: "הכנסות_משתתפים",
+  הכנסה_משתתף_תוספתי: "הכנסות_משתתפים",
+  הכנסה_משתתף_קייטנה: "הכנסות_משתתפים",
+  הכנסת_משרד: "הכנסות_מוסדי",
+  הכנסת_עירייה: "הכנסות_מוסדי",
+};
+
+const FLAT_ANNUAL_TYPES = new Set<BudgetItemType>([
+  "מתכלים",
+  "תקורה",
+  "ערכות",
+  "נקיון",
+  "שיפוי_בעלויות",
+  "פעילות_אחר",
+  "העשרה_קייטנה",
+  "הזנה_קייטנה",
+  "כיבוד",
+  "בונוס",
+  "בונוס_קייטנה",
+  "מענק",
+  "תקורה_רשות",
+]);
+
+const INCOME_TYPES = new Set<BudgetItemType>([
+  "הכנסה_משתתף",
+  "הכנסה_משתתף_תוספתי",
+  "הכנסה_משתתף_קייטנה",
+  "הכנסת_משרד",
+  "הכנסת_עירייה",
+]);
 
 export type ResolvedMonth = {
   month_order: number;
@@ -8,6 +60,8 @@ export type ResolvedMonth = {
   participants_count: number;
   groups_count: number;
   actual_performance_pct: number;
+  short_camp_days: number;
+  long_camp_days: number;
 };
 
 const MONTH_COUNT = 10;
@@ -35,6 +89,8 @@ export function resolveMonths(
         participants_count: override?.participants_count ?? defaults.participants_count,
         groups_count: override?.groups_count ?? defaults.groups_count,
         actual_performance_pct: override?.actual_performance_pct ?? 100,
+        short_camp_days: override?.short_camp_days ?? 0,
+        long_camp_days: override?.long_camp_days ?? 0,
       };
     });
 }
@@ -122,7 +178,16 @@ export function computeSubModelBudget(
     let perGroupMonthly = zeros();
     let perGroupAnnual = 0;
 
-    if (item.item_type === "שכר") {
+    if (item.item_type === "שכר" && item.camp_period) {
+      const rate = item.hourly_rate ?? 0;
+      const hours = item.hours_per_day ?? 0;
+      const multiplier = item.employer_cost_multiplier ?? 1;
+      months.forEach((m, i) => {
+        const campDays = item.camp_period === "ארוך" ? m.long_camp_days : m.short_camp_days;
+        perGroupMonthly[i] = rate * hours * multiplier * campDays;
+      });
+      perGroupAnnual = perGroupMonthly.reduce((s, v) => s + v, 0);
+    } else if (item.item_type === "שכר") {
       const { annual, monthly } = spreadWage(
         item,
         months,
@@ -139,7 +204,7 @@ export function computeSubModelBudget(
       active.slice(0, numActive).forEach((i) => (perGroupMonthly[i] = monthlyAmount));
       perGroupAnnual = monthlyAmount * numActive;
       perGroupMonthly = applyActualPct(perGroupMonthly, months);
-    } else if (item.item_type === "מתכלים" || item.item_type === "תקורה") {
+    } else if (FLAT_ANNUAL_TYPES.has(item.item_type)) {
       const active = activeMonthIndexes(months);
       const numActive = subModel.active_months_count || active.length || 1;
       const monthlyAmount = (item.annual_cost ?? 0) / numActive;
@@ -166,9 +231,13 @@ export function computeSubModelBudget(
         perGroupMonthly[i] = (item.meal_cost ?? 0) * m.participants_count * m.feeding_days;
       });
       perGroupAnnual = perGroupMonthly.reduce((s, v) => s + v, 0);
-    } else if (item.item_type === "הכנסה_משתתף" || item.item_type === "הכנסת_משרד") {
+    } else if (INCOME_TYPES.has(item.item_type)) {
       const fallback =
-        item.item_type === "הכנסה_משתתף" ? defaultIncome?.participant ?? 0 : defaultIncome?.ministry ?? 0;
+        item.item_type === "הכנסה_משתתף"
+          ? defaultIncome?.participant ?? 0
+          : item.item_type === "הכנסת_משרד"
+            ? defaultIncome?.ministry ?? 0
+            : 0;
       const perMonthRate = item.income_monthly_override ?? fallback;
       const active = activeMonthIndexes(months);
       const numActive = subModel.active_months_count || active.length || 1;
@@ -187,14 +256,15 @@ export function computeSubModelBudget(
     });
   }
 
-  const expenseTypes = new Set(["שכר", "חוג_העשרה", "מתכלים", "הזנה", "השתלמויות", "רכזים_קבוע", "תקורה"]);
-  const incomeTypes = new Set(["הכנסה_משתתף", "הכנסת_משרד"]);
-
   const expensesMonthly = zeros();
   const incomeMonthly = zeros();
   for (const r of results) {
-    if (expenseTypes.has(r.item.item_type)) r.totalMonthly.forEach((v, i) => (expensesMonthly[i] += v));
-    if (incomeTypes.has(r.item.item_type)) r.totalMonthly.forEach((v, i) => (incomeMonthly[i] += v));
+    const category = CATEGORY_OF[r.item.item_type];
+    if (category === "הכנסות_משתתפים" || category === "הכנסות_מוסדי") {
+      r.totalMonthly.forEach((v, i) => (incomeMonthly[i] += v));
+    } else {
+      r.totalMonthly.forEach((v, i) => (expensesMonthly[i] += v));
+    }
   }
 
   const netMonthly = expensesMonthly.map((_, i) => incomeMonthly[i] - expensesMonthly[i]);
@@ -217,20 +287,70 @@ export function cutToMonth(monthly: number[], uptoMonthOrder: number): number[] 
 
 export type ReportRow = { label: string; perGroupMonthly: number[]; totalMonthly: number[] };
 
+const REGULAR_ROLES = ["מוביל", "סייעת", "רכז", "סייעת_שילוב", "סייעת_שניה"];
+
 const REPORT_ROW_DEFS: { label: string; match: (r: LineItemResult) => boolean }[] = [
-  { label: 'סה"כ עלויות מובילה', match: (r) => r.item.item_type === "שכר" && r.item.role_label === "מוביל" },
-  { label: 'סה"כ עלויות סייעת', match: (r) => r.item.item_type === "שכר" && r.item.role_label === "סייעת" },
+  {
+    label: 'סה"כ עלויות מובילה',
+    match: (r) => r.item.item_type === "שכר" && !r.item.camp_period && r.item.role_label === "מוביל",
+  },
+  {
+    label: 'סה"כ עלויות סייעת',
+    match: (r) => r.item.item_type === "שכר" && !r.item.camp_period && r.item.role_label === "סייעת",
+  },
   { label: "השתלמויות", match: (r) => r.item.item_type === "השתלמויות" },
-  { label: "רכזים לבעלויות", match: (r) => r.item.item_type === "שכר" && r.item.role_label === "רכז" },
+  {
+    label: "רכזים לבעלויות",
+    match: (r) => r.item.item_type === "שכר" && !r.item.camp_period && r.item.role_label === "רכז",
+  },
   { label: 'סה"כ עלות רכזים לחודש', match: (r) => r.item.item_type === "רכזים_קבוע" },
-  { label: "סייעות שילוב", match: (r) => r.item.item_type === "שכר" && r.item.role_label === "סייעת_שילוב" },
+  {
+    label: "סייעות שילוב",
+    match: (r) => r.item.item_type === "שכר" && !r.item.camp_period && r.item.role_label === "סייעת_שילוב",
+  },
+  {
+    label: "סייעת שניה",
+    match: (r) => r.item.item_type === "שכר" && !r.item.camp_period && r.item.role_label === "סייעת_שניה",
+  },
   {
     label: "שכר אחר",
     match: (r) =>
-      r.item.item_type === "שכר" && !["מוביל", "סייעת", "רכז", "סייעת_שילוב"].includes(r.item.role_label ?? ""),
+      r.item.item_type === "שכר" && !r.item.camp_period && !REGULAR_ROLES.includes(r.item.role_label ?? ""),
   },
+  {
+    label: "מוביל קייטנה",
+    match: (r) => r.item.item_type === "שכר" && !!r.item.camp_period && r.item.role_label === "מוביל",
+  },
+  {
+    label: "סייעת קייטנה",
+    match: (r) => r.item.item_type === "שכר" && !!r.item.camp_period && r.item.role_label === "סייעת",
+  },
+  {
+    label: "סייעת שניה קייטנה",
+    match: (r) => r.item.item_type === "שכר" && !!r.item.camp_period && r.item.role_label === "סייעת_שניה",
+  },
+  {
+    label: "רכז קייטנה",
+    match: (r) => r.item.item_type === "שכר" && !!r.item.camp_period && r.item.role_label === "רכז",
+  },
+  {
+    label: "שכר קייטנה אחר",
+    match: (r) =>
+      r.item.item_type === "שכר" && !!r.item.camp_period && !REGULAR_ROLES.includes(r.item.role_label ?? ""),
+  },
+  { label: "בונוס", match: (r) => r.item.item_type === "בונוס" },
+  { label: "בונוס קייטנה", match: (r) => r.item.item_type === "בונוס_קייטנה" },
+  { label: "מענק", match: (r) => r.item.item_type === "מענק" },
   { label: "העשרה", match: (r) => r.item.item_type === "חוג_העשרה" },
+  { label: "העשרה קייטנה", match: (r) => r.item.item_type === "העשרה_קייטנה" },
   { label: "ציוד מתכלה", match: (r) => r.item.item_type === "מתכלים" },
+  { label: "ערכות", match: (r) => r.item.item_type === "ערכות" },
+  { label: "ניקיון", match: (r) => r.item.item_type === "נקיון" },
+  { label: "שיפוי בעלויות", match: (r) => r.item.item_type === "שיפוי_בעלויות" },
+  { label: "פעילות אחר", match: (r) => r.item.item_type === "פעילות_אחר" },
+  { label: "הזנה קייטנה", match: (r) => r.item.item_type === "הזנה_קייטנה" },
+  { label: "כיבוד", match: (r) => r.item.item_type === "כיבוד" },
+  { label: "תקורה רשות", match: (r) => r.item.item_type === "תקורה_רשות" },
 ];
 
 /**
@@ -238,7 +358,10 @@ const REPORT_ROW_DEFS: { label: string; match: (r: LineItemResult) => boolean }[
  * row structure (one row per role/category, matching the reference workbook),
  * summing multiple line items of the same category into a single row.
  */
-export function summarizeForReport(result: SubModelBudgetResult): {
+export function summarizeForReport(
+  result: SubModelBudgetResult,
+  options?: { tierFilter?: "בסיסי" | "all" }
+): {
   costRows: ReportRow[];
   subtotalBeforeFeedingOverhead: ReportRow;
   feeding: ReportRow;
@@ -252,8 +375,11 @@ export function summarizeForReport(result: SubModelBudgetResult): {
   const zero = () => new Array(MONTH_COUNT).fill(0);
   const add = (a: number[], b: number[]) => a.map((v, i) => v + b[i]);
 
+  const tierFilter = options?.tierFilter ?? "all";
+  const items = tierFilter === "בסיסי" ? result.items.filter((r) => r.item.budget_tier === "בסיסי") : result.items;
+
   const costRows: ReportRow[] = REPORT_ROW_DEFS.map((def) => {
-    const matching = result.items.filter(def.match);
+    const matching = items.filter(def.match);
     return {
       label: def.label,
       perGroupMonthly: matching.reduce((acc, r) => add(acc, r.perGroupMonthly), zero()),
@@ -267,14 +393,14 @@ export function summarizeForReport(result: SubModelBudgetResult): {
     totalMonthly: costRows.reduce((acc, r) => add(acc, r.totalMonthly), zero()),
   };
 
-  const feedingItems = result.items.filter((r) => r.item.item_type === "הזנה");
+  const feedingItems = items.filter((r) => r.item.item_type === "הזנה");
   const feeding: ReportRow = {
     label: "הזנה",
     perGroupMonthly: feedingItems.reduce((acc, r) => add(acc, r.perGroupMonthly), zero()),
     totalMonthly: feedingItems.reduce((acc, r) => add(acc, r.totalMonthly), zero()),
   };
 
-  const overheadItems = result.items.filter((r) => r.item.item_type === "תקורה");
+  const overheadItems = items.filter((r) => r.item.item_type === "תקורה");
   const overhead: ReportRow = {
     label: "תקורה",
     perGroupMonthly: overheadItems.reduce((acc, r) => add(acc, r.perGroupMonthly), zero()),
@@ -287,8 +413,12 @@ export function summarizeForReport(result: SubModelBudgetResult): {
     totalMonthly: add(add(subtotalBeforeFeedingOverhead.totalMonthly, feeding.totalMonthly), overhead.totalMonthly),
   };
 
-  const participantItems = result.items.filter((r) => r.item.item_type === "הכנסה_משתתף");
-  const ministryItems = result.items.filter((r) => r.item.item_type === "הכנסת_משרד");
+  const participantItems = items.filter((r) =>
+    (["הכנסה_משתתף", "הכנסה_משתתף_תוספתי", "הכנסה_משתתף_קייטנה"] as BudgetItemType[]).includes(r.item.item_type)
+  );
+  const ministryItems = items.filter((r) =>
+    (["הכנסת_משרד", "הכנסת_עירייה"] as BudgetItemType[]).includes(r.item.item_type)
+  );
   const participantIncome: ReportRow = {
     label: "הכנסות משתתפים",
     perGroupMonthly: participantItems.reduce((acc, r) => add(acc, r.perGroupMonthly), zero()),

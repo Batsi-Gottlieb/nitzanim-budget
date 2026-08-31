@@ -67,7 +67,11 @@ export async function GET(_request: Request, { params }: { params: Promise<{ sub
   };
 
   for (const r of result.items) {
-    const label = r.item.item_type === "שכר" ? r.item.role_label ?? ITEM_TYPE_LABELS[r.item.item_type] : ITEM_TYPE_LABELS[r.item.item_type];
+    const label =
+      r.item.item_type === "שכר"
+        ? (r.item.role_label ?? ITEM_TYPE_LABELS[r.item.item_type] ?? r.item.item_type) +
+          (r.item.camp_period ? " (קייטנה)" : "")
+        : ITEM_TYPE_LABELS[r.item.item_type] ?? r.item.item_type;
     addRow(label, r.totalMonthly);
   }
   const totalRow = sheet.addRow(['סה"כ הוצאות', ...result.expensesMonthly.map((v) => Math.round(v)), Math.round(result.expensesAnnual)]);

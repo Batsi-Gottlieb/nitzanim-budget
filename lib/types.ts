@@ -129,7 +129,24 @@ export type BudgetItemType =
   | "הכנסה_משתתף"
   | "הכנסת_משרד"
   | "השתלמויות"
-  | "רכזים_קבוע";
+  | "רכזים_קבוע"
+  | "ערכות"
+  | "נקיון"
+  | "שיפוי_בעלויות"
+  | "פעילות_אחר"
+  | "העשרה_קייטנה"
+  | "הזנה_קייטנה"
+  | "כיבוד"
+  | "בונוס"
+  | "בונוס_קייטנה"
+  | "מענק"
+  | "תקורה_רשות"
+  | "הכנסה_משתתף_תוספתי"
+  | "הכנסה_משתתף_קייטנה"
+  | "הכנסת_עירייה";
+
+export type BudgetTier = "בסיסי" | "מורחב";
+export type CampPeriod = "ארוך" | "קצר";
 
 export type CalcMethod = "ימים" | "שבועות";
 export type SpreadMethod = "לפי_ימים" | "לפי_חודשי_פעילות";
@@ -154,6 +171,8 @@ export type BudgetLineItem = {
   income_monthly_override: number | null;
   fixed_monthly_amount: number | null;
   hours_count: number | null;
+  budget_tier: BudgetTier;
+  camp_period: CampPeriod | null;
   notes: string | null;
   source: "base_default" | "manual";
 };
