@@ -75,7 +75,8 @@ function buildSubModelSheet(wb: ExcelJS.Workbook, entry: SubModelReportEntry) {
     } = entry.summary;
 
     let r = headerRow + 1;
-    const writeRow = (row: ReportRow, opts?: { fill?: string; bold?: boolean }) => {
+    const writeRow = (row: ReportRow, opts?: { fill?: string; bold?: boolean; skipIfZero?: boolean }) => {
+      if (opts?.skipIfZero && row[rowSet].every((v) => v === 0)) return;
       sheet.getCell(`B${r}`).value = row.label;
       const monthly = row[rowSet];
       monthly.forEach((v, i) => {
@@ -100,11 +101,11 @@ function buildSubModelSheet(wb: ExcelJS.Workbook, entry: SubModelReportEntry) {
 
     costRows.forEach((row) => writeRow(row, { fill: ROW_LABEL_FILL }));
     writeRow(subtotalBeforeFeedingOverhead, { fill: SUBTOTAL_FILL, bold: true });
-    writeRow(feeding, { fill: ROW_LABEL_FILL });
-    writeRow(overhead, { fill: ROW_LABEL_FILL });
+    writeRow(feeding, { fill: ROW_LABEL_FILL, skipIfZero: true });
+    writeRow(overhead, { fill: ROW_LABEL_FILL, skipIfZero: true });
     writeRow(totalCosts, { fill: SUBTOTAL_FILL, bold: true });
-    writeRow(participantIncome, { fill: ROW_LABEL_FILL });
-    writeRow(ministryIncome, { fill: ROW_LABEL_FILL });
+    writeRow(participantIncome, { fill: ROW_LABEL_FILL, skipIfZero: true });
+    writeRow(ministryIncome, { fill: ROW_LABEL_FILL, skipIfZero: true });
     incomeRows.forEach((row) => writeRow(row, { fill: ROW_LABEL_FILL }));
     writeRow(totalIncome, { fill: SUBTOTAL_FILL, bold: true });
     writeRow(balance, { fill: BALANCE_FILL, bold: true });
@@ -162,7 +163,12 @@ function buildConsolidatedSheet(
   };
 
   let r = 5;
-  const writeAggRow = (label: string, monthly: number[], opts?: { fill?: string; bold?: boolean }) => {
+  const writeAggRow = (
+    label: string,
+    monthly: number[],
+    opts?: { fill?: string; bold?: boolean; skipIfZero?: boolean }
+  ) => {
+    if (opts?.skipIfZero && monthly.every((v) => v === 0)) return;
     sheet.getCell(`B${r}`).value = label;
     monthly.forEach((v, i) => {
       const cell = sheet.getRow(r).getCell(3 + i);
@@ -192,16 +198,16 @@ function buildConsolidatedSheet(
   writeAggRow('סה"כ עלויות לפני הזנה ותקורה', subtotal, { fill: SUBTOTAL_FILL, bold: true });
 
   const feeding = [...aggregate((s) => s.feeding).values()][0] ?? zero();
-  writeAggRow("הזנה", feeding, { fill: ROW_LABEL_FILL });
+  writeAggRow("הזנה", feeding, { fill: ROW_LABEL_FILL, skipIfZero: true });
   const overhead = [...aggregate((s) => s.overhead).values()][0] ?? zero();
-  writeAggRow("תקורה", overhead, { fill: ROW_LABEL_FILL });
+  writeAggRow("תקורה", overhead, { fill: ROW_LABEL_FILL, skipIfZero: true });
   const totalCosts = [...aggregate((s) => s.totalCosts).values()][0] ?? zero();
   writeAggRow('סה"כ עלויות', totalCosts, { fill: SUBTOTAL_FILL, bold: true });
 
   const participantIncome = [...aggregate((s) => s.participantIncome).values()][0] ?? zero();
-  writeAggRow("הכנסות משתתפים", participantIncome, { fill: ROW_LABEL_FILL });
+  writeAggRow("הכנסות משתתפים", participantIncome, { fill: ROW_LABEL_FILL, skipIfZero: true });
   const ministryIncome = [...aggregate((s) => s.ministryIncome).values()][0] ?? zero();
-  writeAggRow("הכנסות משרד החינוך", ministryIncome, { fill: ROW_LABEL_FILL });
+  writeAggRow("הכנסות משרד החינוך", ministryIncome, { fill: ROW_LABEL_FILL, skipIfZero: true });
   const incomeLabels = aggregate((s) => s.incomeRows);
   incomeLabels.forEach((monthly, label) => writeAggRow(label, monthly, { fill: ROW_LABEL_FILL }));
   const totalIncome = [...aggregate((s) => s.totalIncome).values()][0] ?? zero();
@@ -253,7 +259,8 @@ function buildUtilizationSheet(wb: ExcelJS.Workbook, name: string, entries: SubM
   };
 
   let r = 5;
-  const writeRow = (label: string, value: number, opts?: { fill?: string; bold?: boolean }) => {
+  const writeRow = (label: string, value: number, opts?: { fill?: string; bold?: boolean; skipIfZero?: boolean }) => {
+    if (opts?.skipIfZero && value === 0) return;
     sheet.getCell(`B${r}`).value = label;
     const cell = sheet.getCell(`C${r}`);
     cell.value = Math.round(value);
@@ -278,15 +285,15 @@ function buildUtilizationSheet(wb: ExcelJS.Workbook, name: string, entries: SubM
   const subtotal = one((s) => s.subtotalBeforeFeedingOverhead);
   writeRow('סה"כ עלויות לפני הזנה ותקורה', subtotal, { fill: SUBTOTAL_FILL, bold: true });
   const feeding = one((s) => s.feeding);
-  writeRow("הזנה", feeding, { fill: ROW_LABEL_FILL });
+  writeRow("הזנה", feeding, { fill: ROW_LABEL_FILL, skipIfZero: true });
   const overhead = one((s) => s.overhead);
-  writeRow("תקורה", overhead, { fill: ROW_LABEL_FILL });
+  writeRow("תקורה", overhead, { fill: ROW_LABEL_FILL, skipIfZero: true });
   const totalCosts = one((s) => s.totalCosts);
   writeRow('סה"כ עלויות', totalCosts, { fill: SUBTOTAL_FILL, bold: true });
   const participantIncome = one((s) => s.participantIncome);
-  writeRow("הכנסות משתתפים", participantIncome, { fill: ROW_LABEL_FILL });
+  writeRow("הכנסות משתתפים", participantIncome, { fill: ROW_LABEL_FILL, skipIfZero: true });
   const ministryIncome = one((s) => s.ministryIncome);
-  writeRow("הכנסות משרד החינוך", ministryIncome, { fill: ROW_LABEL_FILL });
+  writeRow("הכנסות משרד החינוך", ministryIncome, { fill: ROW_LABEL_FILL, skipIfZero: true });
   const incomeRows = sumAnnual((s) => s.incomeRows);
   incomeRows.forEach((v, label) => writeRow(label, v, { fill: ROW_LABEL_FILL }));
   const totalIncome = one((s) => s.totalIncome);
@@ -350,7 +357,13 @@ function buildExecutionSummarySheet(
   });
 
   let r = 6;
-  const writeRow = (label: string, g: number, s: number, opts?: { fill?: string; bold?: boolean }) => {
+  const writeRow = (
+    label: string,
+    g: number,
+    s: number,
+    opts?: { fill?: string; bold?: boolean; skipIfZero?: boolean }
+  ) => {
+    if (opts?.skipIfZero && g === 0 && s === 0) return;
     sheet.getCell(`B${r}`).value = label;
     sheet.getCell(`C${r}`).value = Math.round(g);
     sheet.getCell(`D${r}`).value = Math.round(s);
@@ -372,11 +385,11 @@ function buildExecutionSummarySheet(
 
   const gFeeding = oneAnnual(gardenEntries, (s) => s.feeding);
   const sFeeding = oneAnnual(schoolEntries, (s) => s.feeding);
-  writeRow("הזנה", gFeeding, sFeeding, { fill: ROW_LABEL_FILL });
+  writeRow("הזנה", gFeeding, sFeeding, { fill: ROW_LABEL_FILL, skipIfZero: true });
 
   const gOverhead = oneAnnual(gardenEntries, (s) => s.overhead);
   const sOverhead = oneAnnual(schoolEntries, (s) => s.overhead);
-  writeRow("תקורה", gOverhead, sOverhead, { fill: ROW_LABEL_FILL });
+  writeRow("תקורה", gOverhead, sOverhead, { fill: ROW_LABEL_FILL, skipIfZero: true });
 
   const gTotalCosts = oneAnnual(gardenEntries, (s) => s.totalCosts);
   const sTotalCosts = oneAnnual(schoolEntries, (s) => s.totalCosts);
@@ -384,11 +397,11 @@ function buildExecutionSummarySheet(
 
   const gParticipant = oneAnnual(gardenEntries, (s) => s.participantIncome);
   const sParticipant = oneAnnual(schoolEntries, (s) => s.participantIncome);
-  writeRow("הכנסות משתתפים", gParticipant, sParticipant, { fill: ROW_LABEL_FILL });
+  writeRow("הכנסות משתתפים", gParticipant, sParticipant, { fill: ROW_LABEL_FILL, skipIfZero: true });
 
   const gMinistry = oneAnnual(gardenEntries, (s) => s.ministryIncome);
   const sMinistry = oneAnnual(schoolEntries, (s) => s.ministryIncome);
-  writeRow("הכנסות משרד החינוך", gMinistry, sMinistry, { fill: ROW_LABEL_FILL });
+  writeRow("הכנסות משרד החינוך", gMinistry, sMinistry, { fill: ROW_LABEL_FILL, skipIfZero: true });
 
   const gIncomeRows = annualOf(gardenEntries, (s) => s.incomeRows);
   const sIncomeRows = annualOf(schoolEntries, (s) => s.incomeRows);
