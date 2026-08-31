@@ -96,6 +96,7 @@ export function SubModelEditor({
   const [lineItems, setLineItems] = useState(initialLineItems);
   const [isPending, startTransition] = useTransition();
   const [cutoffMonth, setCutoffMonth] = useState(10);
+  const [tierFilter, setTierFilter] = useState<"בסיסי" | "all">("all");
 
   const result = useMemo(
     () => computeSubModelBudget(subModel, months, yearGeneral, lineItems, defaultIncome),
@@ -455,22 +456,45 @@ export function SubModelEditor({
       <section className="rounded-2xl border border-border bg-surface p-5">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-semibold">תקציב מחושב — ברמת קבוצה בודדת × {subModel.groups_count || 1} קבוצות</h2>
-          <div className="flex items-center gap-2 text-sm">
-            <label className="text-foreground-muted">חתך עד חודש:</label>
-            <select
-              value={cutoffMonth}
-              onChange={(e) => setCutoffMonth(Number(e.target.value))}
-              className="rounded-md border border-border px-2 py-1"
-            >
-              {MONTHS.map((m) => (
-                <option key={m.month_order} value={m.month_order}>
-                  {m.label}
-                </option>
-              ))}
-            </select>
+          <div className="flex items-center gap-4 text-sm">
+            <div className="flex items-center gap-2">
+              <label className="text-foreground-muted">הצגה:</label>
+              <div className="flex overflow-hidden rounded-md border border-border">
+                <button
+                  onClick={() => setTierFilter("בסיסי")}
+                  className={`px-3 py-1 text-xs font-semibold ${
+                    tierFilter === "בסיסי" ? "bg-primary text-primary-foreground" : "hover:bg-surface-muted"
+                  }`}
+                >
+                  בסיס בלבד
+                </button>
+                <button
+                  onClick={() => setTierFilter("all")}
+                  className={`px-3 py-1 text-xs font-semibold ${
+                    tierFilter === "all" ? "bg-primary text-primary-foreground" : "hover:bg-surface-muted"
+                  }`}
+                >
+                  כולל מורחב
+                </button>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="text-foreground-muted">חתך עד חודש:</label>
+              <select
+                value={cutoffMonth}
+                onChange={(e) => setCutoffMonth(Number(e.target.value))}
+                className="rounded-md border border-border px-2 py-1"
+              >
+                {MONTHS.map((m) => (
+                  <option key={m.month_order} value={m.month_order}>
+                    {m.label}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
         </div>
-        <ReportTable result={result} cutoffMonth={cutoffMonth} />
+        <ReportTable result={result} cutoffMonth={cutoffMonth} tierFilter={tierFilter} />
       </section>
     </div>
   );
@@ -651,14 +675,16 @@ function LineItemRow({
 function ReportTable({
   result,
   cutoffMonth,
+  tierFilter,
 }: {
   result: ReturnType<typeof computeSubModelBudget>;
   cutoffMonth: number;
+  tierFilter: "בסיסי" | "all";
 }) {
   const visibleMonths = MONTHS.filter((m) => m.month_order <= cutoffMonth);
   const sum = (arr: number[]) => arr.slice(0, cutoffMonth).reduce((s, v) => s + v, 0);
 
-  const summary = summarizeForReport(result);
+  const summary = summarizeForReport(result, { tierFilter });
   const costRows = [...summary.costRows, summary.feeding, summary.overhead].filter((r) =>
     r.totalMonthly.some((v) => v !== 0)
   );
@@ -697,10 +723,10 @@ function ReportTable({
             <td className="px-3 py-2">סה&quot;כ הוצאות</td>
             {visibleMonths.map((m) => (
               <td key={m.month_order} className="px-3 py-2 tabular-nums">
-                {fmt(result.expensesMonthly[m.month_order - 1])}
+                {fmt(summary.totalCosts.totalMonthly[m.month_order - 1])}
               </td>
             ))}
-            <td className="px-3 py-2 tabular-nums">{fmt(sum(result.expensesMonthly))}</td>
+            <td className="px-3 py-2 tabular-nums">{fmt(sum(summary.totalCosts.totalMonthly))}</td>
           </tr>
           {incomeRows.map((r) => (
             <tr key={r.label} className="border-b border-border">
@@ -717,19 +743,19 @@ function ReportTable({
             <td className="px-3 py-2">סה&quot;כ הכנסות</td>
             {visibleMonths.map((m) => (
               <td key={m.month_order} className="px-3 py-2 tabular-nums">
-                {fmt(result.incomeMonthly[m.month_order - 1])}
+                {fmt(summary.totalIncome.totalMonthly[m.month_order - 1])}
               </td>
             ))}
-            <td className="px-3 py-2 tabular-nums">{fmt(sum(result.incomeMonthly))}</td>
+            <td className="px-3 py-2 tabular-nums">{fmt(sum(summary.totalIncome.totalMonthly))}</td>
           </tr>
           <tr className="font-bold">
             <td className="px-3 py-2">מאזן נטו</td>
             {visibleMonths.map((m) => (
               <td key={m.month_order} className="px-3 py-2 tabular-nums">
-                {fmt(result.netMonthly[m.month_order - 1])}
+                {fmt(summary.balance.totalMonthly[m.month_order - 1])}
               </td>
             ))}
-            <td className="px-3 py-2 tabular-nums">{fmt(sum(result.netMonthly))}</td>
+            <td className="px-3 py-2 tabular-nums">{fmt(sum(summary.balance.totalMonthly))}</td>
           </tr>
         </tbody>
       </table>
