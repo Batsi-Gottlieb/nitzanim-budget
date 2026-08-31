@@ -52,6 +52,8 @@ export type ModelBaseData = {
   avg_participants: number;
   min_clubs: number;
   max_clubs: number;
+  training_hours: number;
+  overhead_monthly_amount: number;
 };
 
 export type ModelLamasIncome = {
@@ -115,6 +117,7 @@ export type SubModelMonth = {
   long_camp_days: number;
   participants_count: number | null;
   groups_count: number | null;
+  actual_performance_pct: number | null;
 };
 
 export type BudgetItemType =
@@ -150,6 +153,7 @@ export type BudgetLineItem = {
   overhead_pct: number | null;
   income_monthly_override: number | null;
   fixed_monthly_amount: number | null;
+  hours_count: number | null;
   notes: string | null;
   source: "base_default" | "manual";
 };

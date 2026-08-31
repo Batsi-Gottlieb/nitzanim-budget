@@ -70,6 +70,13 @@ export function GeneralDataForm({ yearId, initial }: { yearId: string; initial: 
             );
           })}
         </tbody>
+        <tfoot>
+          <tr className="border-t border-border bg-surface-muted font-semibold">
+            <td className="px-4 py-2">סה&quot;כ</td>
+            <td className="px-4 py-2 tabular-nums">{rows.reduce((s, r) => s + r.activity_days, 0)}</td>
+            <td className="px-4 py-2 tabular-nums">{rows.reduce((s, r) => s + r.feeding_days, 0)}</td>
+          </tr>
+        </tfoot>
       </table>
       <div className="flex items-center gap-3 border-t border-border px-4 py-3">
         <button

@@ -16,6 +16,8 @@ const FIELDS: { key: keyof ModelBaseData; label: string }[] = [
   { key: "avg_participants", label: "ממוצע משתתפים" },
   { key: "min_clubs", label: "מינימום חוגים" },
   { key: "max_clubs", label: "מקסימום חוגים" },
+  { key: "training_hours", label: "שעות הכשרה" },
+  { key: "overhead_monthly_amount", label: "תקורה חודשית (₪)" },
 ];
 
 export function ModelBaseDataForm({

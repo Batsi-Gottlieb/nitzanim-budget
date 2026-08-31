@@ -29,6 +29,7 @@ export async function updateSubModelMonths(subModelId: string, formData: FormDat
     long_camp_days: number;
     participants_count: number | null;
     groups_count: number | null;
+    actual_performance_pct: number | null;
   }[];
   for (const r of rows) {
     await supabase
@@ -40,6 +41,7 @@ export async function updateSubModelMonths(subModelId: string, formData: FormDat
         long_camp_days: r.long_camp_days,
         participants_count: r.participants_count,
         groups_count: r.groups_count,
+        actual_performance_pct: r.actual_performance_pct,
       })
       .eq("sub_model_id", subModelId)
       .eq("calendar_month", r.calendar_month);
@@ -57,7 +59,6 @@ export async function addLineItem(subModelId: string, clientId: string, itemType
       item_type: itemType,
       source: "manual",
       ...(itemType === "שכר" ? { calc_method: "ימים", spread_method: "לפי_ימים", employer_cost_multiplier: 1.3 } : {}),
-      ...(itemType === "תקורה" ? { overhead_pct: 10 } : {}),
     })
     .select()
     .single();
@@ -90,9 +91,9 @@ export async function updateLineItem(itemId: string, subModelId: string, formDat
       session_cost: num("session_cost"),
       annual_cost: num("annual_cost"),
       meal_cost: num("meal_cost"),
-      overhead_pct: num("overhead_pct"),
       income_monthly_override: num("income_monthly_override"),
       fixed_monthly_amount: num("fixed_monthly_amount"),
+      hours_count: num("hours_count"),
       notes: str("notes"),
       source: "manual",
       updated_at: new Date().toISOString(),

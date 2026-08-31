@@ -89,7 +89,23 @@ export async function createSubModel(formData: FormData) {
   }
 
   const otherRows: Record<string, unknown>[] = [
-    { sub_model_id: subModel.id, client_id: clientId, item_type: "תקורה", overhead_pct: 10, source: "base_default" },
+    {
+      sub_model_id: subModel.id,
+      client_id: clientId,
+      item_type: "תקורה",
+      annual_cost: (baseData?.overhead_monthly_amount ?? 0) * 10,
+      source: "base_default",
+    },
+    {
+      sub_model_id: subModel.id,
+      client_id: clientId,
+      item_type: "השתלמויות",
+      role_label: "מוביל",
+      hours_count: baseData?.training_hours ?? 0,
+      hourly_rate: baseData?.lead_hourly_rate ?? null,
+      employer_cost_multiplier: 1.3,
+      source: "base_default",
+    },
     {
       sub_model_id: subModel.id,
       client_id: clientId,

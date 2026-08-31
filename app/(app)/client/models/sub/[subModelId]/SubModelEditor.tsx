@@ -81,6 +81,7 @@ export function SubModelEditor({
           long_camp_days: m.long_camp_days,
           participants_count: m.participants_count,
           groups_count: m.groups_count,
+          actual_performance_pct: m.actual_performance_pct,
         }))
       )
     );
@@ -101,9 +102,9 @@ export function SubModelEditor({
     set("session_cost", item.session_cost);
     set("annual_cost", item.annual_cost);
     set("meal_cost", item.meal_cost);
-    set("overhead_pct", item.overhead_pct);
     set("income_monthly_override", item.income_monthly_override);
     set("fixed_monthly_amount", item.fixed_monthly_amount);
+    set("hours_count", item.hours_count);
     set("notes", item.notes);
     startTransition(() => updateLineItem(item.id, subModelId, fd));
   }
@@ -198,6 +199,7 @@ export function SubModelEditor({
             <tr className="border-y border-border bg-surface-muted text-right">
               <th className="px-3 py-2 font-semibold">חודש</th>
               <th className="px-3 py-2 font-semibold">ימי פעילות</th>
+              <th className="px-3 py-2 font-semibold">אחוז ביצוע בפועל</th>
               <th className="px-3 py-2 font-semibold">כמות משתתפים</th>
               <th className="px-3 py-2 font-semibold">כמות קבוצות</th>
               <th className="px-3 py-2 font-semibold">ימי הזנה</th>
@@ -222,6 +224,23 @@ export function SubModelEditor({
                           prev.map((r) =>
                             r.calendar_month === m.calendar_month
                               ? { ...r, activity_days: e.target.value === "" ? null : Number(e.target.value) }
+                              : r
+                          )
+                        )
+                      }
+                      className="w-20 rounded-md border border-border px-2 py-1"
+                    />
+                  </td>
+                  <td className="px-3 py-2">
+                    <input
+                      type="number"
+                      placeholder="100"
+                      value={row.actual_performance_pct ?? ""}
+                      onChange={(e) =>
+                        setMonths((prev) =>
+                          prev.map((r) =>
+                            r.calendar_month === m.calendar_month
+                              ? { ...r, actual_performance_pct: e.target.value === "" ? null : Number(e.target.value) }
                               : r
                           )
                         )
@@ -316,6 +335,34 @@ export function SubModelEditor({
               );
             })}
           </tbody>
+          <tfoot>
+            <tr className="border-t border-border bg-surface-muted font-semibold">
+              <td className="px-3 py-2">סה&quot;כ</td>
+              <td className="px-3 py-2 tabular-nums">
+                {MONTHS.reduce((s, m) => {
+                  const row = months.find((r) => r.calendar_month === m.calendar_month)!;
+                  const yg = yearGeneral.find((g) => g.calendar_month === m.calendar_month);
+                  return s + (row.activity_days ?? yg?.activity_days ?? 0);
+                }, 0)}
+              </td>
+              <td />
+              <td />
+              <td />
+              <td className="px-3 py-2 tabular-nums">
+                {MONTHS.reduce((s, m) => {
+                  const row = months.find((r) => r.calendar_month === m.calendar_month)!;
+                  const yg = yearGeneral.find((g) => g.calendar_month === m.calendar_month);
+                  return s + (row.feeding_days ?? yg?.feeding_days ?? 0);
+                }, 0)}
+              </td>
+              <td className="px-3 py-2 tabular-nums">
+                {months.reduce((s, r) => s + (r.short_camp_days ?? 0), 0)}
+              </td>
+              <td className="px-3 py-2 tabular-nums">
+                {months.reduce((s, r) => s + (r.long_camp_days ?? 0), 0)}
+              </td>
+            </tr>
+          </tfoot>
         </table>
         <div className="border-t border-border p-4">
           <button
@@ -465,10 +512,30 @@ function LineItemRow({
             {input("session_cost", "עלות חוג בודד")}
           </>
         )}
-        {(item.item_type === "מתכלים" || item.item_type === "השתלמויות") && input("annual_cost", "עלות שנתית")}
+        {item.item_type === "מתכלים" && input("annual_cost", "עלות שנתית")}
+        {item.item_type === "השתלמויות" && (
+          <>
+            <Field label="תפקיד">
+              <select
+                value={item.role_label ?? ""}
+                onChange={(e) => onChange({ role_label: e.target.value })}
+                className="w-full rounded-md border border-border px-2 py-1.5 text-sm"
+              >
+                {ROLE_OPTIONS.map((r) => (
+                  <option key={r} value={r}>
+                    {r}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            {input("hours_count", "כמות שעות הכשרה")}
+            {input("hourly_rate", "תעריף לשעה")}
+            {input("employer_cost_multiplier", "מכפיל עלות מעביד", "number", "0.001")}
+          </>
+        )}
         {item.item_type === "רכזים_קבוע" && input("fixed_monthly_amount", "סכום קבוע לחודש")}
         {item.item_type === "הזנה" && input("meal_cost", "עלות מנה")}
-        {item.item_type === "תקורה" && input("overhead_pct", "אחוז תקורה", "number", "0.1")}
+        {item.item_type === "תקורה" && input("annual_cost", "עלות תקורה שנתית")}
         {(item.item_type === "הכנסה_משתתף" || item.item_type === "הכנסת_משרד") &&
           input("income_monthly_override", "סכום לחודש למשתתף (ברירת מחדל מבסיס הנתונים אם ריק)")}
       </div>
@@ -497,10 +564,11 @@ function ReportTable({
   const visibleMonths = MONTHS.filter((m) => m.month_order <= cutoffMonth);
   const sum = (arr: number[]) => arr.slice(0, cutoffMonth).reduce((s, v) => s + v, 0);
 
-  const rows = [
-    ...result.items.map((r) => ({ label: r.item.role_label ?? ITEM_TYPE_LABELS[r.item.item_type], monthly: r.totalMonthly, type: r.item.item_type })),
-    { label: "תקורה", monthly: result.overhead.totalMonthly, type: "תקורה" },
-  ];
+  const rows = result.items.map((r) => ({
+    label: r.item.item_type === "שכר" ? r.item.role_label ?? ITEM_TYPE_LABELS[r.item.item_type] : ITEM_TYPE_LABELS[r.item.item_type],
+    monthly: r.totalMonthly,
+    type: r.item.item_type,
+  }));
 
   return (
     <div className="overflow-x-auto">

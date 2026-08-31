@@ -12,6 +12,8 @@ const ITEM_TYPE_LABELS: Record<string, string> = {
   תקורה: "תקורה",
   הכנסה_משתתף: "הכנסה למשתתף",
   הכנסת_משרד: "הכנסת משרד החינוך",
+  השתלמויות: "השתלמויות",
+  רכזים_קבוע: "רכזים - סכום קבוע",
 };
 
 export async function GET(_request: Request, { params }: { params: Promise<{ subModelId: string }> }) {
@@ -65,9 +67,9 @@ export async function GET(_request: Request, { params }: { params: Promise<{ sub
   };
 
   for (const r of result.items) {
-    addRow(r.item.role_label ?? ITEM_TYPE_LABELS[r.item.item_type], r.totalMonthly);
+    const label = r.item.item_type === "שכר" ? r.item.role_label ?? ITEM_TYPE_LABELS[r.item.item_type] : ITEM_TYPE_LABELS[r.item.item_type];
+    addRow(label, r.totalMonthly);
   }
-  addRow("תקורה", result.overhead.totalMonthly);
   const totalRow = sheet.addRow(['סה"כ הוצאות', ...result.expensesMonthly.map((v) => Math.round(v)), Math.round(result.expensesAnnual)]);
   totalRow.font = { bold: true };
   const incomeRow = sheet.addRow(['סה"כ הכנסות', ...result.incomeMonthly.map((v) => Math.round(v)), Math.round(result.incomeAnnual)]);
