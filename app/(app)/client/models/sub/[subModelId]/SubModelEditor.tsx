@@ -52,6 +52,7 @@ const CATEGORY_GROUPS: { category: string; types: string[] }[] = [
 
 const ROLE_OPTIONS = ["מוביל", "סייעת", "סייעת_שניה", "סייעת_שילוב", "רכז", "אחר"];
 const BUDGET_TIER_OPTIONS = ["בסיסי", "מורחב"];
+const CAMP_UNIT_ITEM_TYPES = ["העשרה_קייטנה", "הזנה_קייטנה"];
 const FLAT_ANNUAL_ITEM_TYPES = [
   "מתכלים",
   "תקורה",
@@ -59,8 +60,6 @@ const FLAT_ANNUAL_ITEM_TYPES = [
   "נקיון",
   "שיפוי_בעלויות",
   "פעילות_אחר",
-  "העשרה_קייטנה",
-  "הזנה_קייטנה",
   "כיבוד",
   "בונוס",
   "בונוס_קייטנה",
@@ -569,6 +568,17 @@ function LineItemRow({
         {FLAT_ANNUAL_ITEM_TYPES.includes(item.item_type) &&
           item.item_type !== "תקורה" &&
           input("annual_cost", "עלות שנתית")}
+        {CAMP_UNIT_ITEM_TYPES.includes(item.item_type) && (
+          <>
+            {input("session_cost", "עלות ליחידה ליום קייטנה")}
+            {input("weekly_count", "כמות יחידות ממוצעת ליום קייטנה")}
+            <Field label="סיכום — ערך יום קייטנה ממוצע">
+              <div className="rounded-md border border-border bg-surface px-2 py-1.5 text-sm tabular-nums">
+                {fmt((item.session_cost ?? 0) * (item.weekly_count ?? 0))}
+              </div>
+            </Field>
+          </>
+        )}
         {item.item_type === "השתלמויות" && (
           <>
             <Field label="תפקיד">

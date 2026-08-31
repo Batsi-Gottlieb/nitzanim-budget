@@ -35,14 +35,15 @@ const FLAT_ANNUAL_TYPES = new Set<BudgetItemType>([
   "נקיון",
   "שיפוי_בעלויות",
   "פעילות_אחר",
-  "העשרה_קייטנה",
-  "הזנה_קייטנה",
   "כיבוד",
   "בונוס",
   "בונוס_קייטנה",
   "מענק",
   "תקורה_רשות",
 ]);
+
+/** Camp items priced as unit cost × avg units per camp day (short + long combined), for that month. */
+const CAMP_UNIT_TYPES = new Set<BudgetItemType>(["העשרה_קייטנה", "הזנה_קייטנה"]);
 
 const INCOME_TYPES = new Set<BudgetItemType>([
   "הכנסה_משתתף",
@@ -204,6 +205,13 @@ export function computeSubModelBudget(
       active.slice(0, numActive).forEach((i) => (perGroupMonthly[i] = monthlyAmount));
       perGroupAnnual = monthlyAmount * numActive;
       perGroupMonthly = applyActualPct(perGroupMonthly, months);
+    } else if (CAMP_UNIT_TYPES.has(item.item_type)) {
+      const unitCost = item.session_cost ?? 0;
+      const avgUnitsPerCampDay = item.weekly_count ?? 0;
+      months.forEach((m, i) => {
+        perGroupMonthly[i] = unitCost * avgUnitsPerCampDay * (m.short_camp_days + m.long_camp_days);
+      });
+      perGroupAnnual = perGroupMonthly.reduce((s, v) => s + v, 0);
     } else if (FLAT_ANNUAL_TYPES.has(item.item_type)) {
       const active = activeMonthIndexes(months);
       const numActive = subModel.active_months_count || active.length || 1;
@@ -353,6 +361,12 @@ const REPORT_ROW_DEFS: { label: string; match: (r: LineItemResult) => boolean }[
   { label: "תקורה רשות", match: (r) => r.item.item_type === "תקורה_רשות" },
 ];
 
+const INCOME_ROW_DEFS: { label: string; match: (r: LineItemResult) => boolean }[] = [
+  { label: "הכנסת משתתפים תוספתי", match: (r) => r.item.item_type === "הכנסה_משתתף_תוספתי" },
+  { label: "הכנסת משתתפים קייטנה", match: (r) => r.item.item_type === "הכנסה_משתתף_קייטנה" },
+  { label: "הכנסת עירייה השלמה", match: (r) => r.item.item_type === "הכנסת_עירייה" },
+];
+
 /**
  * Categorizes a sub-model's computed line items into the office's fixed report
  * row structure (one row per role/category, matching the reference workbook),
@@ -369,6 +383,7 @@ export function summarizeForReport(
   totalCosts: ReportRow;
   participantIncome: ReportRow;
   ministryIncome: ReportRow;
+  incomeRows: ReportRow[];
   totalIncome: ReportRow;
   balance: ReportRow;
 } {
@@ -413,12 +428,8 @@ export function summarizeForReport(
     totalMonthly: add(add(subtotalBeforeFeedingOverhead.totalMonthly, feeding.totalMonthly), overhead.totalMonthly),
   };
 
-  const participantItems = items.filter((r) =>
-    (["הכנסה_משתתף", "הכנסה_משתתף_תוספתי", "הכנסה_משתתף_קייטנה"] as BudgetItemType[]).includes(r.item.item_type)
-  );
-  const ministryItems = items.filter((r) =>
-    (["הכנסת_משרד", "הכנסת_עירייה"] as BudgetItemType[]).includes(r.item.item_type)
-  );
+  const participantItems = items.filter((r) => r.item.item_type === "הכנסה_משתתף");
+  const ministryItems = items.filter((r) => r.item.item_type === "הכנסת_משרד");
   const participantIncome: ReportRow = {
     label: "הכנסות משתתפים",
     perGroupMonthly: participantItems.reduce((acc, r) => add(acc, r.perGroupMonthly), zero()),
@@ -429,10 +440,26 @@ export function summarizeForReport(
     perGroupMonthly: ministryItems.reduce((acc, r) => add(acc, r.perGroupMonthly), zero()),
     totalMonthly: ministryItems.reduce((acc, r) => add(acc, r.totalMonthly), zero()),
   };
+
+  const incomeRows: ReportRow[] = INCOME_ROW_DEFS.map((def) => {
+    const matching = items.filter(def.match);
+    return {
+      label: def.label,
+      perGroupMonthly: matching.reduce((acc, r) => add(acc, r.perGroupMonthly), zero()),
+      totalMonthly: matching.reduce((acc, r) => add(acc, r.totalMonthly), zero()),
+    };
+  }).filter((row) => row.totalMonthly.some((v) => v !== 0));
+
   const totalIncome: ReportRow = {
     label: 'סה"כ הכנסות',
-    perGroupMonthly: add(participantIncome.perGroupMonthly, ministryIncome.perGroupMonthly),
-    totalMonthly: add(participantIncome.totalMonthly, ministryIncome.totalMonthly),
+    perGroupMonthly: [participantIncome, ministryIncome, ...incomeRows].reduce(
+      (acc, r) => add(acc, r.perGroupMonthly),
+      zero()
+    ),
+    totalMonthly: [participantIncome, ministryIncome, ...incomeRows].reduce(
+      (acc, r) => add(acc, r.totalMonthly),
+      zero()
+    ),
   };
 
   const balance: ReportRow = {
@@ -449,6 +476,7 @@ export function summarizeForReport(
     totalCosts,
     participantIncome,
     ministryIncome,
+    incomeRows,
     totalIncome,
     balance,
   };
