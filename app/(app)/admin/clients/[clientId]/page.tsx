@@ -58,7 +58,12 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ c
       <section className="rounded-2xl border border-border bg-surface p-5">
         <h2 className="mb-3 text-sm font-semibold">דרג למ&quot;ס — שנת {activeYear.hebrew_name}</h2>
         <form action={saveLamas} className="flex items-end gap-3">
-          <select name="lamas_level" defaultValue={clientYear?.lamas_level ?? ""} className="rounded-md border border-border px-2 py-1.5 text-sm">
+          <select
+            key={clientYear?.lamas_level ?? "unset"}
+            name="lamas_level"
+            defaultValue={clientYear?.lamas_level ?? ""}
+            className="rounded-md border border-border px-2 py-1.5 text-sm"
+          >
             <option value="" disabled>
               בחר דרג
             </option>
