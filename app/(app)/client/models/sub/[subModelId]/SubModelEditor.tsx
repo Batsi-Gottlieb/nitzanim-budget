@@ -97,6 +97,23 @@ export function SubModelEditor({
   const [isPending, startTransition] = useTransition();
   const [cutoffMonth, setCutoffMonth] = useState(10);
   const [tierFilter, setTierFilter] = useState<"בסיסי" | "all">("all");
+  const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(() => {
+    const collapsed = new Set<string>();
+    for (const cat of CATEGORY_GROUPS) {
+      const hasAny = cat.types.some((t) => initialLineItems.some((i) => i.item_type === t));
+      if (!hasAny) collapsed.add(cat.category);
+    }
+    return collapsed;
+  });
+
+  function toggleCategory(category: string) {
+    setCollapsedCategories((prev) => {
+      const next = new Set(prev);
+      if (next.has(category)) next.delete(category);
+      else next.add(category);
+      return next;
+    });
+  }
 
   const result = useMemo(
     () => computeSubModelBudget(subModel, months, yearGeneral, lineItems, defaultIncome),
@@ -419,38 +436,69 @@ export function SubModelEditor({
         </div>
       </section>
 
-      <section className="space-y-8">
+      <section className="space-y-6">
         <h2 className="text-lg font-semibold">סעיפי תקציב</h2>
-        {categoryGroups.map((cat) => (
-          <div key={cat.category} className="space-y-4">
-            <h3 className="text-base font-bold text-primary">{cat.category}</h3>
-            {cat.groups.map((g) => (
-              <div key={g.type} className="rounded-2xl border border-border bg-surface p-4">
-                <div className="mb-3 flex items-center justify-between">
-                  <h4 className="text-sm font-bold">{ITEM_TYPE_LABELS[g.type]}</h4>
-                  <button
-                    onClick={() => handleAddItem(g.type)}
-                    className="text-xs font-semibold text-primary hover:underline"
-                  >
-                    + הוספת שורה
-                  </button>
-                </div>
+        {categoryGroups.map((cat) => {
+          const isCollapsed = collapsedCategories.has(cat.category);
+          const totalItems = cat.groups.reduce((s, g) => s + g.items.length, 0);
+          return (
+            <div key={cat.category} className="space-y-3">
+              <button
+                onClick={() => toggleCategory(cat.category)}
+                className="flex w-full items-center justify-between rounded-lg px-1 py-1 text-right hover:bg-surface-muted"
+              >
+                <h3 className="text-base font-bold text-primary">
+                  {cat.category}
+                  {totalItems > 0 && <span className="mr-2 text-xs font-normal text-foreground-muted">({totalItems})</span>}
+                </h3>
+                <span className="text-xs text-foreground-muted">{isCollapsed ? "▸ הצג" : "▾ הסתר"}</span>
+              </button>
+              {!isCollapsed && (
                 <div className="space-y-3">
-                  {g.items.map((item) => (
-                    <LineItemRow
-                      key={item.id}
-                      item={item}
-                      onChange={(patch) => updateItemLocal(item.id, patch)}
-                      onSave={() => saveLineItem(lineItems.find((i) => i.id === item.id)!)}
-                      onDelete={() => handleDeleteItem(item.id)}
-                    />
-                  ))}
-                  {g.items.length === 0 && <p className="text-xs text-foreground-muted">אין שורות מסוג זה</p>}
+                  {cat.groups.map((g) =>
+                    g.items.length === 0 ? (
+                      <div
+                        key={g.type}
+                        className="flex items-center justify-between rounded-lg border border-border bg-surface px-4 py-2"
+                      >
+                        <span className="text-sm text-foreground-muted">{ITEM_TYPE_LABELS[g.type]}</span>
+                        <button
+                          onClick={() => handleAddItem(g.type)}
+                          className="text-xs font-semibold text-primary hover:underline"
+                        >
+                          + הוספת שורה
+                        </button>
+                      </div>
+                    ) : (
+                      <div key={g.type} className="rounded-2xl border border-border bg-surface p-4">
+                        <div className="mb-3 flex items-center justify-between">
+                          <h4 className="text-sm font-bold">{ITEM_TYPE_LABELS[g.type]}</h4>
+                          <button
+                            onClick={() => handleAddItem(g.type)}
+                            className="text-xs font-semibold text-primary hover:underline"
+                          >
+                            + הוספת שורה
+                          </button>
+                        </div>
+                        <div className="space-y-3">
+                          {g.items.map((item) => (
+                            <LineItemRow
+                              key={item.id}
+                              item={item}
+                              onChange={(patch) => updateItemLocal(item.id, patch)}
+                              onSave={() => saveLineItem(lineItems.find((i) => i.id === item.id)!)}
+                              onDelete={() => handleDeleteItem(item.id)}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    )
+                  )}
                 </div>
-              </div>
-            ))}
-          </div>
-        ))}
+              )}
+            </div>
+          );
+        })}
       </section>
 
       <section className="rounded-2xl border border-border bg-surface p-5">
