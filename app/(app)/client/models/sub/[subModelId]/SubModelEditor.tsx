@@ -543,6 +543,9 @@ function LineItemRow({
                 onChange={(e) => onChange({ role_label: e.target.value })}
                 className="w-full rounded-md border border-border px-2 py-1.5 text-sm"
               >
+                <option value="" disabled>
+                  בחר תפקיד
+                </option>
                 {ROLE_OPTIONS.map((r) => (
                   <option key={r} value={r}>
                     {r}
@@ -607,6 +610,9 @@ function LineItemRow({
                 onChange={(e) => onChange({ role_label: e.target.value })}
                 className="w-full rounded-md border border-border px-2 py-1.5 text-sm"
               >
+                <option value="" disabled>
+                  בחר תפקיד
+                </option>
                 {ROLE_OPTIONS.map((r) => (
                   <option key={r} value={r}>
                     {r}
