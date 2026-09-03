@@ -4,12 +4,17 @@ import { getCurrentProfile } from "@/lib/auth";
 import { Sidebar } from "@/components/Sidebar";
 import { IMPERSONATOR_COOKIE, verifySignedAdminId } from "@/lib/impersonation";
 import { returnToAdmin } from "@/app/(app)/admin/clients/actions";
+import { getCurrentRevahaProfile } from "@/lib/revaha/auth";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const session = await getCurrentProfile();
   if (!session) redirect("/login");
 
   const { profile } = session;
+  if (!profile) {
+    const revahaSession = await getCurrentRevahaProfile();
+    if (revahaSession?.profile) redirect("/revaha");
+  }
   const isAdmin = profile?.role === "admin";
 
   const cookieStore = await cookies();
