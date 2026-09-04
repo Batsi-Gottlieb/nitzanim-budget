@@ -19,23 +19,23 @@ function AssignmentRow({ assignment, staffName, roleName, facilityId }: { assign
   }
 
   return (
-    <form action={handleSave} className="flex flex-wrap items-end gap-2 rounded-xl border border-[#E4E1FA] bg-[#F7F6FE]/40 p-3">
-      <div className="min-w-0 flex-1 text-sm text-[#2A2560]">
+    <form action={handleSave} className="flex flex-wrap items-end gap-2 rounded-xl border border-slate-200 bg-slate-50/60 p-3">
+      <div className="min-w-0 flex-1 text-sm text-slate-900">
         <span className="font-medium">{staffName}</span> — {roleName}
       </div>
       <div>
-        <label className="mb-1 block text-[11px] text-[#7A76A8]">שעות שבועיות</label>
+        <label className="mb-1 block text-[11px] text-slate-500">שעות שבועיות</label>
         <input
           name="weekly_hours"
           type="number"
           step="0.5"
           defaultValue={assignment.weekly_hours ?? ""}
-          className="w-24 rounded-md border border-[#E4E1FA] px-2 py-1 text-sm"
+          className="w-24 rounded-lg border border-slate-200 px-2 py-1 text-sm"
         />
       </div>
       <button
         disabled={isPending}
-        className="rounded-lg bg-[#5B4FE8] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#4A3FD4] disabled:opacity-60"
+        className="rounded-xl bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white shadow-xs transition-all hover:bg-indigo-700 disabled:opacity-60"
       >
         {isPending ? "שומר..." : "שמירה"}
       </button>
@@ -43,7 +43,7 @@ function AssignmentRow({ assignment, staffName, roleName, facilityId }: { assign
         type="button"
         disabled={isPending}
         onClick={() => startTransition(() => deleteStaffRoleAssignment(assignment.id, facilityId))}
-        className="rounded-lg border border-[#E4E1FA] px-3 py-1.5 text-xs font-semibold text-danger hover:bg-white disabled:opacity-60"
+        className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-danger hover:bg-white disabled:opacity-60"
       >
         הסרה
       </button>
@@ -71,9 +71,9 @@ export function RoleAssignmentsSection({
   }
 
   return (
-    <section className="rounded-2xl border border-[#E4E1FA] bg-white p-5">
-      <h2 className="mb-1 text-sm font-semibold text-[#2A2560]">שיבוץ עובדים לתפקידים</h2>
-      <p className="mb-3 text-xs text-[#7A76A8]">שיבוץ בסיסי: עובד, תפקיד ושעות שבועיות.</p>
+    <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-2xs">
+      <h2 className="mb-1 text-sm font-bold text-slate-900">שיבוץ עובדים לתפקידים</h2>
+      <p className="mb-3 text-xs text-slate-500">שיבוץ בסיסי: עובד, תפקיד ושעות שבועיות.</p>
       <div className="space-y-2">
         {assignments.map((a) => (
           <AssignmentRow
@@ -84,14 +84,14 @@ export function RoleAssignmentsSection({
             facilityId={facilityId}
           />
         ))}
-        {assignments.length === 0 && <p className="text-sm text-[#7A76A8]">אין עדיין שיבוצים</p>}
+        {assignments.length === 0 && <p className="text-sm text-slate-500">אין עדיין שיבוצים</p>}
       </div>
 
       {staff.length > 0 && (
-        <form action={handleAdd} className="mt-4 flex flex-wrap items-end gap-2 border-t border-[#E4E1FA] pt-4">
+        <form action={handleAdd} className="mt-4 flex flex-wrap items-end gap-2 border-t border-slate-200 pt-4">
           <div>
-            <label className="mb-1 block text-xs font-medium text-[#7A76A8]">עובד</label>
-            <select name="staff_id" required className="w-44 rounded-md border border-[#E4E1FA] px-2 py-1.5 text-sm">
+            <label className="mb-1 block text-xs font-medium text-slate-500">עובד</label>
+            <select name="staff_id" required className="w-44 rounded-lg border border-slate-200 px-2 py-1.5 text-sm">
               <option value="">בחירת עובד...</option>
               {staff.map((s) => (
                 <option key={s.id} value={s.id}>
@@ -101,8 +101,8 @@ export function RoleAssignmentsSection({
             </select>
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-[#7A76A8]">תפקיד</label>
-            <select name="role_id" required className="w-44 rounded-md border border-[#E4E1FA] px-2 py-1.5 text-sm">
+            <label className="mb-1 block text-xs font-medium text-slate-500">תפקיד</label>
+            <select name="role_id" required className="w-44 rounded-lg border border-slate-200 px-2 py-1.5 text-sm">
               <option value="">בחירת תפקיד...</option>
               {roles.map((r) => (
                 <option key={r.id} value={r.id}>
@@ -112,12 +112,12 @@ export function RoleAssignmentsSection({
             </select>
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-[#7A76A8]">שעות שבועיות</label>
-            <input name="weekly_hours" type="number" step="0.5" className="w-24 rounded-md border border-[#E4E1FA] px-2 py-1.5 text-sm" />
+            <label className="mb-1 block text-xs font-medium text-slate-500">שעות שבועיות</label>
+            <input name="weekly_hours" type="number" step="0.5" className="w-24 rounded-lg border border-slate-200 px-2 py-1.5 text-sm" />
           </div>
           <button
             disabled={isPending}
-            className="rounded-lg bg-[#5B4FE8] px-4 py-2 text-sm font-semibold text-white hover:bg-[#4A3FD4] disabled:opacity-60"
+            className="rounded-xl bg-indigo-600 px-4 py-2 text-xs font-semibold text-white shadow-xs transition-all hover:bg-indigo-700 disabled:opacity-60"
           >
             {isPending ? "מוסיף..." : "הוספת שיבוץ"}
           </button>

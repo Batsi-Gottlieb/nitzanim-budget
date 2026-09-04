@@ -31,58 +31,58 @@ export function OrgUsersSection({ organizationId, initialUsers }: { organization
   const [addState, addFormAction, addPending] = useActionState(addAction, { error: null });
 
   return (
-    <section className="rounded-2xl border border-[#E4E1FA] bg-white p-5">
-      <h2 className="mb-3 text-sm font-semibold text-[#2A2560]">משתמשים מקושרים לארגון זה</h2>
+    <section className="rounded-xl border border-slate-200 bg-white p-5">
+      <h2 className="mb-3 text-sm font-bold text-slate-900">משתמשים מקושרים לארגון זה</h2>
       <div className="space-y-3">
         {users.map((u) => (
-          <div key={u.id} className="rounded-xl border border-[#E4E1FA] bg-[#F7F6FE]/40 p-3">
+          <div key={u.id} className="rounded-xl border border-slate-200 bg-slate-50/60 p-3">
             <div className="flex flex-wrap items-end gap-3">
               <div>
-                <label className="mb-1 block text-xs font-medium text-[#7A76A8]">שם</label>
-                <div className="px-2 py-1.5 text-sm text-[#2A2560]">{u.full_name}</div>
+                <label className="mb-1 block text-xs font-medium text-slate-500">שם</label>
+                <div className="px-2 py-1.5 text-sm text-slate-900">{u.full_name}</div>
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-[#7A76A8]">אימייל</label>
-                <div className="px-2 py-1.5 text-sm text-[#7A76A8]">{u.email}</div>
+                <label className="mb-1 block text-xs font-medium text-slate-500">אימייל</label>
+                <div className="px-2 py-1.5 text-sm text-slate-500">{u.email}</div>
               </div>
               <button
                 type="button"
                 disabled={isPending}
                 onClick={() => handleResetPassword(u.id)}
-                className="rounded-lg border border-[#E4E1FA] px-3 py-1.5 text-xs font-semibold text-[#2A2560] hover:bg-[#F7F6FE] disabled:opacity-60"
+                className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-white disabled:opacity-60"
               >
                 איפוס סיסמה
               </button>
             </div>
             {revealed[u.id] && (
-              <p className="mt-2 rounded-lg bg-[#F7F6FE] p-2 text-xs text-[#2A2560]">
+              <p className="mt-2 rounded-lg bg-indigo-50 p-2 text-xs text-slate-700">
                 סיסמה חדשה (הציגו פעם אחת): <span className="font-mono font-semibold">{revealed[u.id]}</span>
               </p>
             )}
           </div>
         ))}
-        {users.length === 0 && <p className="text-sm text-[#7A76A8]">אין עדיין משתמשים לארגון זה</p>}
+        {users.length === 0 && <p className="text-sm text-slate-500">אין עדיין משתמשים לארגון זה</p>}
       </div>
 
-      <div className="mt-5 border-t border-[#E4E1FA] pt-4">
-        <h3 className="mb-2 text-xs font-bold text-[#7A76A8]">הוספת משתמש</h3>
+      <div className="mt-5 border-t border-slate-200 pt-4">
+        <h3 className="mb-2 text-xs font-bold text-slate-400">הוספת משתמש</h3>
         <form action={addFormAction} className="flex flex-wrap items-end gap-3">
           <div>
-            <label className="mb-1 block text-xs font-medium text-[#7A76A8]">שם</label>
-            <input name="full_name" className="w-40 rounded-md border border-[#E4E1FA] px-2 py-1.5 text-sm" />
+            <label className="mb-1 block text-xs font-medium text-slate-500">שם</label>
+            <input name="full_name" className="w-40 rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm" />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-[#7A76A8]">אימייל</label>
-            <input name="email" type="email" required className="w-56 rounded-md border border-[#E4E1FA] px-2 py-1.5 text-sm" />
+            <label className="mb-1 block text-xs font-medium text-slate-500">אימייל</label>
+            <input name="email" type="email" required className="w-56 rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm" />
           </div>
           <button
             disabled={addPending}
-            className="rounded-lg bg-[#5B4FE8] px-4 py-2 text-sm font-semibold text-white hover:bg-[#4A3FD4] disabled:opacity-60"
+            className="rounded-xl bg-indigo-600 px-4 py-2 text-xs font-semibold text-white shadow-xs transition-all hover:bg-indigo-700 disabled:opacity-60"
           >
             {addPending ? "מוסיף..." : "הוספת משתמש"}
           </button>
         </form>
-        {addState.error && <p className="mt-2 text-sm text-danger">{addState.error}</p>}
+        {addState.error && <p className="mt-2 text-sm text-red-600">{addState.error}</p>}
       </div>
     </section>
   );

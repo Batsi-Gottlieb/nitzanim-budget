@@ -19,15 +19,15 @@ export function CreateFacilityForm({ models }: { models: FacilityModel[] }) {
   }, [state.id, router]);
 
   return (
-    <div className="rounded-2xl border border-[#E4E1FA] bg-white p-4">
+    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-2xs">
       <form action={formAction} className="flex flex-wrap items-end gap-3">
         <div>
-          <label className="mb-1 block text-xs font-medium text-[#7A76A8]">שם הפנימייה</label>
-          <input name="name" required className="w-56 rounded-md border border-[#E4E1FA] px-2 py-1.5 text-sm" />
+          <label className="mb-1 block text-xs font-medium text-slate-500">שם הפנימייה</label>
+          <input name="name" required className="w-56 rounded-lg border border-slate-200 px-2 py-1.5 text-sm" />
         </div>
         <div>
-          <label className="mb-1 block text-xs font-medium text-[#7A76A8]">מודל תקן</label>
-          <select name="facility_model_id" className="w-56 rounded-md border border-[#E4E1FA] px-2 py-1.5 text-sm">
+          <label className="mb-1 block text-xs font-medium text-slate-500">מודל תקן</label>
+          <select name="facility_model_id" className="w-56 rounded-lg border border-slate-200 px-2 py-1.5 text-sm">
             <option value="">בחירת מודל...</option>
             {models.map((m) => (
               <option key={m.id} value={m.id}>
@@ -37,16 +37,16 @@ export function CreateFacilityForm({ models }: { models: FacilityModel[] }) {
           </select>
         </div>
         <div>
-          <label className="mb-1 block text-xs font-medium text-[#7A76A8]">מושמים בפועל</label>
-          <input name="occupancy_actual" type="number" className="w-32 rounded-md border border-[#E4E1FA] px-2 py-1.5 text-sm" />
+          <label className="mb-1 block text-xs font-medium text-slate-500">מושמים בפועל</label>
+          <input name="occupancy_actual" type="number" className="w-32 rounded-lg border border-slate-200 px-2 py-1.5 text-sm" />
         </div>
         <div>
-          <label className="mb-1 block text-xs font-medium text-[#7A76A8]">מושמים מכרז</label>
-          <input name="occupancy_tender" type="number" className="w-32 rounded-md border border-[#E4E1FA] px-2 py-1.5 text-sm" />
+          <label className="mb-1 block text-xs font-medium text-slate-500">מושמים מכרז</label>
+          <input name="occupancy_tender" type="number" className="w-32 rounded-lg border border-slate-200 px-2 py-1.5 text-sm" />
         </div>
         <button
           disabled={isPending}
-          className="rounded-lg bg-[#5B4FE8] px-4 py-2 text-sm font-semibold text-white hover:bg-[#4A3FD4] disabled:opacity-60"
+          className="rounded-xl bg-indigo-600 px-4 py-2 text-xs font-semibold text-white shadow-xs transition-all hover:bg-indigo-700 disabled:opacity-60"
         >
           {isPending ? "יוצר..." : "יצירת פנימייה"}
         </button>

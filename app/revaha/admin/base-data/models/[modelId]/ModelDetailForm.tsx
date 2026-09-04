@@ -30,24 +30,24 @@ export function ModelDetailForm({
   }
 
   return (
-    <section className="rounded-2xl border border-[#E4E1FA] bg-white p-5">
-      <h2 className="mb-3 text-sm font-semibold text-[#2A2560]">פרטי המודל</h2>
+    <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-2xs">
+      <h2 className="mb-3 text-sm font-bold text-slate-900">פרטי המודל</h2>
       <form action={handleSave} className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <div>
-          <label className="mb-1 block text-xs font-medium text-[#7A76A8]">שם המודל</label>
+          <label className="mb-1 block text-xs font-medium text-slate-500">שם המודל</label>
           <input
             name="name"
             defaultValue={model.name}
             required
-            className="w-full rounded-md border border-[#E4E1FA] px-2 py-1.5 text-sm"
+            className="w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm"
           />
         </div>
         <div>
-          <label className="mb-1 block text-xs font-medium text-[#7A76A8]">תעריף משתתף</label>
+          <label className="mb-1 block text-xs font-medium text-slate-500">תעריף משתתף</label>
           <select
             name="participant_rate_id"
             defaultValue={model.participant_rate_id ?? ""}
-            className="w-full rounded-md border border-[#E4E1FA] px-2 py-1.5 text-sm"
+            className="w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm"
           >
             <option value="">ללא</option>
             {participantRates.map((r) => (
@@ -58,11 +58,11 @@ export function ModelDetailForm({
           </select>
         </div>
         <div>
-          <label className="mb-1 block text-xs font-medium text-[#7A76A8]">תעריף שיפוי שכ״ד</label>
+          <label className="mb-1 block text-xs font-medium text-slate-500">תעריף שיפוי שכ״ד</label>
           <select
             name="rent_reimbursement_rate_id"
             defaultValue={model.rent_reimbursement_rate_id ?? ""}
-            className="w-full rounded-md border border-[#E4E1FA] px-2 py-1.5 text-sm"
+            className="w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm"
           >
             <option value="">ללא</option>
             {rentReimbursementRates.map((r) => (
@@ -73,36 +73,36 @@ export function ModelDetailForm({
           </select>
         </div>
         <div>
-          <label className="mb-1 block text-xs font-medium text-[#7A76A8]">השתתפות אבטחה חודשית</label>
+          <label className="mb-1 block text-xs font-medium text-slate-500">השתתפות אבטחה חודשית</label>
           <input
             name="security_participation_monthly"
             type="number"
             defaultValue={model.security_participation_monthly ?? ""}
-            className="w-full rounded-md border border-[#E4E1FA] px-2 py-1.5 text-sm"
+            className="w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm"
           />
         </div>
         <div>
-          <label className="mb-1 block text-xs font-medium text-[#7A76A8]">תעריף בת שירות (מלא)</label>
+          <label className="mb-1 block text-xs font-medium text-slate-500">תעריף בת שירות (מלא)</label>
           <input
             name="bat_sherut_full_rate"
             type="number"
             defaultValue={model.bat_sherut_full_rate ?? ""}
-            className="w-full rounded-md border border-[#E4E1FA] px-2 py-1.5 text-sm"
+            className="w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm"
           />
         </div>
         <div>
-          <label className="mb-1 block text-xs font-medium text-[#7A76A8]">תעריף בת עמי</label>
+          <label className="mb-1 block text-xs font-medium text-slate-500">תעריף בת עמי</label>
           <input
             name="bat_sherut_bat_ami_rate"
             type="number"
             defaultValue={model.bat_sherut_bat_ami_rate ?? ""}
-            className="w-full rounded-md border border-[#E4E1FA] px-2 py-1.5 text-sm"
+            className="w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm"
           />
         </div>
         <div className="sm:col-span-3">
           <button
             disabled={isPending}
-            className="rounded-lg bg-[#5B4FE8] px-4 py-2 text-sm font-semibold text-white hover:bg-[#4A3FD4] disabled:opacity-60"
+            className="rounded-xl bg-indigo-600 px-4 py-2 text-xs font-semibold text-white shadow-xs transition-all hover:bg-indigo-700 disabled:opacity-60"
           >
             {isPending ? "שומר..." : "שמירת פרטים"}
           </button>

@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Banknote, Coins, ReceiptText, Wallet } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { computeFacilityBudget } from "@/lib/revaha/calc";
+import { KpiCard } from "@/components/revaha/KpiCard";
 import { FacilityDetailForm } from "./FacilityDetailForm";
 import { StaffSection } from "./StaffSection";
 import { RoleAssignmentsSection } from "./RoleAssignmentsSection";
@@ -37,26 +39,19 @@ export default async function RevahaFacilityDetailPage({ params }: { params: Pro
   const budget = computeFacilityBudget(assignmentList, staffList, roles ?? [], roleTypeRates ?? [], expenses ?? []);
 
   return (
-    <div className="max-w-4xl space-y-6">
-      <div>
-        <Link href="/revaha/org/facilities" className="text-xs text-[#7A76A8] hover:text-[#5B4FE8]">
+    <div className="space-y-6">
+      <div className="rounded-xl border border-slate-200 bg-white px-6 py-5 shadow-2xs">
+        <Link href="/revaha/org/facilities" className="text-xs text-slate-500 hover:text-indigo-600">
           ← הפנימיות שלי
         </Link>
-        <h1 className="mt-1 text-2xl font-bold text-[#2A2560]">{facility.name}</h1>
+        <h1 className="mt-1 text-xl font-black tracking-tight text-slate-900">{facility.name}</h1>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-        {[
-          { label: 'סה"כ שכר חודשי', value: `₪${fmt(budget.wageMonthly)}` },
-          { label: "תוספות ונסיעות", value: `₪${fmt(budget.staffAdditionsMonthly)}` },
-          { label: "הוצאות שוטפות", value: `₪${fmt(budget.expensesMonthly)}` },
-          { label: 'סה"כ תקציב חודשי', value: `₪${fmt(budget.totalMonthly)}` },
-        ].map((s) => (
-          <div key={s.label} className="rounded-2xl border border-[#E4E1FA] bg-white p-4">
-            <div className="text-xl font-extrabold text-[#5B4FE8]">{s.value}</div>
-            <div className="mt-1 text-xs text-[#7A76A8]">{s.label}</div>
-          </div>
-        ))}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
+        <KpiCard label='סה"כ שכר חודשי' value={`₪${fmt(budget.wageMonthly)}`} icon={Banknote} accent="emerald" />
+        <KpiCard label="תוספות ונסיעות" value={`₪${fmt(budget.staffAdditionsMonthly)}`} icon={Coins} />
+        <KpiCard label="הוצאות שוטפות" value={`₪${fmt(budget.expensesMonthly)}`} icon={ReceiptText} />
+        <KpiCard label='סה"כ תקציב חודשי' value={`₪${fmt(budget.totalMonthly)}`} icon={Wallet} />
       </div>
 
       <FacilityDetailForm facility={facility} models={models ?? []} />

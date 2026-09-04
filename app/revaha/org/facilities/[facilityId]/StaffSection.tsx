@@ -28,12 +28,12 @@ function PayModeFields({ payMode, staff }: { payMode: string; staff?: Staff }) {
   if (payMode === "hourly") {
     return (
       <div>
-        <label className="mb-1 block text-[11px] text-[#7A76A8]">תעריף לשעה</label>
+        <label className="mb-1 block text-[11px] text-slate-500">תעריף לשעה</label>
         <input
           name="hourly_rate"
           type="number"
           defaultValue={staff?.hourly_rate ?? ""}
-          className="w-full rounded-md border border-[#E4E1FA] px-2 py-1 text-sm"
+          className="w-full rounded-lg border border-slate-200 px-2 py-1 text-sm"
         />
       </div>
     );
@@ -41,21 +41,21 @@ function PayModeFields({ payMode, staff }: { payMode: string; staff?: Staff }) {
   return (
     <>
       <div>
-        <label className="mb-1 block text-[11px] text-[#7A76A8]">שכר חודשי</label>
+        <label className="mb-1 block text-[11px] text-slate-500">שכר חודשי</label>
         <input
           name="monthly_salary"
           type="number"
           defaultValue={staff?.monthly_salary ?? ""}
-          className="w-full rounded-md border border-[#E4E1FA] px-2 py-1 text-sm"
+          className="w-full rounded-lg border border-slate-200 px-2 py-1 text-sm"
         />
       </div>
       <div>
-        <label className="mb-1 block text-[11px] text-[#7A76A8]">שעות חודשיות</label>
+        <label className="mb-1 block text-[11px] text-slate-500">שעות חודשיות</label>
         <input
           name="monthly_hours"
           type="number"
           defaultValue={staff?.monthly_hours ?? ""}
-          className="w-full rounded-md border border-[#E4E1FA] px-2 py-1 text-sm"
+          className="w-full rounded-lg border border-slate-200 px-2 py-1 text-sm"
         />
       </div>
     </>
@@ -85,15 +85,15 @@ function RoleTypeRates({
   const available = roleTypes.filter((rt) => !configured.has(rt.id));
 
   return (
-    <div className="mt-2 border-t border-[#E4E1FA] pt-2">
-      <div className="mb-1 text-[11px] font-bold text-[#7A76A8]">תעריף שעתי ייחודי לסוג תפקיד</div>
+    <div className="mt-2 border-t border-slate-200 pt-2">
+      <div className="mb-1 text-[11px] font-bold text-slate-500">תעריף שעתי ייחודי לסוג תפקיד</div>
       <div className="flex flex-wrap gap-2">
         {rates.map((r) => {
           const rt = roleTypes.find((x) => x.id === r.role_type_id);
           return (
             <span
               key={r.id}
-              className="flex items-center gap-1 rounded-full bg-[#F7F6FE] px-2.5 py-1 text-xs text-[#2A2560]"
+              className="flex items-center gap-1 rounded-full bg-slate-50 px-2.5 py-1 text-xs text-slate-900"
             >
               {rt?.name}: ₪{r.hourly_rate}
               <button
@@ -111,7 +111,7 @@ function RoleTypeRates({
       </div>
       {available.length > 0 && (
         <form action={handleAdd} className="mt-1.5 flex items-end gap-1.5">
-          <select name="role_type_id" required className="rounded-md border border-[#E4E1FA] px-1.5 py-1 text-xs">
+          <select name="role_type_id" required className="rounded-lg border border-slate-200 px-1.5 py-1 text-xs">
             <option value="">סוג תפקיד...</option>
             {available.map((rt) => (
               <option key={rt.id} value={rt.id}>
@@ -124,9 +124,9 @@ function RoleTypeRates({
             type="number"
             placeholder="תעריף"
             required
-            className="w-20 rounded-md border border-[#E4E1FA] px-1.5 py-1 text-xs"
+            className="w-20 rounded-lg border border-slate-200 px-1.5 py-1 text-xs"
           />
-          <button disabled={isPending} className="rounded-md border border-[#E4E1FA] px-2 py-1 text-xs font-semibold text-[#5B4FE8]">
+          <button disabled={isPending} className="rounded-lg border border-slate-200 px-2 py-1 text-xs font-semibold text-indigo-600">
             הוספה
           </button>
         </form>
@@ -154,24 +154,24 @@ function StaffRow({
   }
 
   return (
-    <div className="rounded-xl border border-[#E4E1FA] bg-[#F7F6FE]/40 p-3">
+    <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-3">
       <form action={handleSave} className="grid grid-cols-2 items-end gap-2 sm:grid-cols-7">
         <div className="col-span-2">
-          <label className="mb-1 block text-[11px] text-[#7A76A8]">שם</label>
+          <label className="mb-1 block text-[11px] text-slate-500">שם</label>
           <input
             name="full_name"
             defaultValue={staff.full_name}
             required
-            className="w-full rounded-md border border-[#E4E1FA] px-2 py-1 text-sm"
+            className="w-full rounded-lg border border-slate-200 px-2 py-1 text-sm"
           />
         </div>
         <div>
-          <label className="mb-1 block text-[11px] text-[#7A76A8]">אופן תשלום</label>
+          <label className="mb-1 block text-[11px] text-slate-500">אופן תשלום</label>
           <select
             name="pay_mode"
             value={payMode}
             onChange={(e) => setPayMode(e.target.value as "hourly" | "monthly")}
-            className="w-full rounded-md border border-[#E4E1FA] px-2 py-1 text-sm"
+            className="w-full rounded-lg border border-slate-200 px-2 py-1 text-sm"
           >
             <option value="hourly">שעתי</option>
             <option value="monthly">חודשי</option>
@@ -179,29 +179,29 @@ function StaffRow({
         </div>
         <PayModeFields payMode={payMode} staff={staff} />
         <div>
-          <label className="mb-1 block text-[11px] text-[#7A76A8]">תוספת חודשית</label>
+          <label className="mb-1 block text-[11px] text-slate-500">תוספת חודשית</label>
           <input
             name="monthly_addition"
             type="number"
             defaultValue={staff.monthly_addition ?? ""}
-            className="w-full rounded-md border border-[#E4E1FA] px-2 py-1 text-sm"
+            className="w-full rounded-lg border border-slate-200 px-2 py-1 text-sm"
           />
         </div>
         <div>
-          <label className="mb-1 block text-[11px] text-[#7A76A8]">נסיעות חודשי</label>
+          <label className="mb-1 block text-[11px] text-slate-500">נסיעות חודשי</label>
           <input
             name="monthly_travel"
             type="number"
             defaultValue={staff.monthly_travel ?? ""}
-            className="w-full rounded-md border border-[#E4E1FA] px-2 py-1 text-sm"
+            className="w-full rounded-lg border border-slate-200 px-2 py-1 text-sm"
           />
         </div>
         <div>
-          <label className="mb-1 block text-[11px] text-[#7A76A8]">סוג העסקה</label>
+          <label className="mb-1 block text-[11px] text-slate-500">סוג העסקה</label>
           <select
             name="employment_type"
             defaultValue={staff.employment_type}
-            className="w-full rounded-md border border-[#E4E1FA] px-2 py-1 text-sm"
+            className="w-full rounded-lg border border-slate-200 px-2 py-1 text-sm"
           >
             <option value="שכיר">שכיר</option>
             <option value="עצמאי">עצמאי</option>
@@ -215,14 +215,14 @@ function StaffRow({
             defaultChecked={staff.has_training_fund}
             className="h-4 w-4"
           />
-          <label htmlFor={`kh-${staff.id}`} className="text-[11px] text-[#7A76A8]">
+          <label htmlFor={`kh-${staff.id}`} className="text-[11px] text-slate-500">
             קרן השתלמות
           </label>
         </div>
         <div className="col-span-2 flex gap-2 sm:col-span-7">
           <button
             disabled={isPending}
-            className="rounded-lg bg-[#5B4FE8] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#4A3FD4] disabled:opacity-60"
+            className="rounded-xl bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white shadow-xs transition-all hover:bg-indigo-700 disabled:opacity-60"
           >
             {isPending ? "שומר..." : "שמירה"}
           </button>
@@ -230,7 +230,7 @@ function StaffRow({
             type="button"
             disabled={isPending}
             onClick={() => startTransition(() => deleteStaff(staff.id, facilityId))}
-            className="rounded-lg border border-[#E4E1FA] px-3 py-1.5 text-xs font-semibold text-danger hover:bg-white disabled:opacity-60"
+            className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-danger hover:bg-white disabled:opacity-60"
           >
             הסרה
           </button>
@@ -261,9 +261,9 @@ export function StaffSection({
   }
 
   return (
-    <section className="rounded-2xl border border-[#E4E1FA] bg-white p-5">
-      <h2 className="mb-1 text-sm font-semibold text-[#2A2560]">צוות</h2>
-      <p className="mb-3 text-xs text-[#7A76A8]">עובדי הפנימייה, תעריפים ותוספות חודשיות קבועות.</p>
+    <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-2xs">
+      <h2 className="mb-1 text-sm font-bold text-slate-900">צוות</h2>
+      <p className="mb-3 text-xs text-slate-500">עובדי הפנימייה, תעריפים ותוספות חודשיות קבועות.</p>
       <div className="space-y-2">
         {staff.map((s) => (
           <StaffRow
@@ -274,24 +274,24 @@ export function StaffSection({
             rates={roleTypeRates.filter((r) => r.staff_id === s.id)}
           />
         ))}
-        {staff.length === 0 && <p className="text-sm text-[#7A76A8]">אין עדיין עובדים בפנימייה זו</p>}
+        {staff.length === 0 && <p className="text-sm text-slate-500">אין עדיין עובדים בפנימייה זו</p>}
       </div>
 
-      <form action={handleAdd} className="mt-4 flex flex-wrap items-end gap-2 border-t border-[#E4E1FA] pt-4">
+      <form action={handleAdd} className="mt-4 flex flex-wrap items-end gap-2 border-t border-slate-200 pt-4">
         <div>
-          <label className="mb-1 block text-xs font-medium text-[#7A76A8]">שם עובד חדש</label>
-          <input name="full_name" required className="w-44 rounded-md border border-[#E4E1FA] px-2 py-1.5 text-sm" />
+          <label className="mb-1 block text-xs font-medium text-slate-500">שם עובד חדש</label>
+          <input name="full_name" required className="w-44 rounded-lg border border-slate-200 px-2 py-1.5 text-sm" />
         </div>
         <div>
-          <label className="mb-1 block text-xs font-medium text-[#7A76A8]">אופן תשלום</label>
-          <select name="pay_mode" defaultValue="hourly" className="w-32 rounded-md border border-[#E4E1FA] px-2 py-1.5 text-sm">
+          <label className="mb-1 block text-xs font-medium text-slate-500">אופן תשלום</label>
+          <select name="pay_mode" defaultValue="hourly" className="w-32 rounded-lg border border-slate-200 px-2 py-1.5 text-sm">
             <option value="hourly">שעתי</option>
             <option value="monthly">חודשי</option>
           </select>
         </div>
         <button
           disabled={isPending}
-          className="rounded-lg bg-[#5B4FE8] px-4 py-2 text-sm font-semibold text-white hover:bg-[#4A3FD4] disabled:opacity-60"
+          className="rounded-xl bg-indigo-600 px-4 py-2 text-xs font-semibold text-white shadow-xs transition-all hover:bg-indigo-700 disabled:opacity-60"
         >
           {isPending ? "מוסיף..." : "הוספת עובד"}
         </button>
