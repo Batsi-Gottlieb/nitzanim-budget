@@ -1,19 +1,19 @@
 "use client";
 
 import { useActionState, useRef, useState, useTransition } from "react";
-import { FileSpreadsheet, Upload } from "lucide-react";
+import { FileSpreadsheet, UserPlus, Upload } from "lucide-react";
 import {
-  createStaff,
   deleteStaff,
   deleteStaffRoleTypeRate,
   importStaffFromExcel,
   updateStaff,
   upsertStaffRoleTypeRate,
 } from "./actions";
+import { AddStaffModal } from "./AddStaffModal";
 
 type RoleType = { id: string; name: string };
 type StaffRoleTypeRate = { id: string; staff_id: string; role_type_id: string; hourly_rate: number | null };
-type Staff = {
+export type Staff = {
   id: string;
   full_name: string;
   pay_mode: "hourly" | "monthly";
@@ -26,7 +26,7 @@ type Staff = {
   employment_type: "שכיר" | "עצמאי";
 };
 
-function PayModeFields({ payMode, staff }: { payMode: string; staff?: Staff }) {
+export function PayModeFields({ payMode, staff }: { payMode: string; staff?: Staff }) {
   if (payMode === "hourly") {
     return (
       <div>
@@ -258,7 +258,7 @@ function ImportStaffForm({ facilityId }: { facilityId: string }) {
     <div className="mt-4 rounded-xl border border-dashed border-slate-300 bg-slate-50/60 p-3">
       <div className="mb-2 flex items-center gap-1.5 text-xs font-bold text-slate-500">
         <FileSpreadsheet className="h-3.5 w-3.5" />
-        ייבוא עובדים מאקסל
+        קליטה מרוכזת — ייבוא עובדים מאקסל
       </div>
       <form action={formAction} className="flex flex-wrap items-center gap-2">
         <input
@@ -296,23 +296,29 @@ export function StaffSection({
   staff,
   roleTypes,
   roleTypeRates,
+  roles,
 }: {
   facilityId: string;
   staff: Staff[];
   roleTypes: RoleType[];
   roleTypeRates: StaffRoleTypeRate[];
+  roles: { id: string; name: string }[];
 }) {
-  const [isPending, startTransition] = useTransition();
-
-  function handleAdd(formData: FormData) {
-    startTransition(async () => {
-      await createStaff(facilityId, formData);
-    });
-  }
+  const [modalOpen, setModalOpen] = useState(false);
 
   return (
     <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-2xs">
-      <h2 className="mb-1 text-sm font-bold text-slate-900">צוות</h2>
+      <div className="mb-1 flex items-center justify-between">
+        <h2 className="text-sm font-bold text-slate-900">צוות</h2>
+        <button
+          type="button"
+          onClick={() => setModalOpen(true)}
+          className="flex items-center gap-1.5 rounded-xl bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white shadow-xs transition-all hover:bg-indigo-700"
+        >
+          <UserPlus className="h-3.5 w-3.5" />
+          קליטה בודדת
+        </button>
+      </div>
       <p className="mb-3 text-xs text-slate-500">עובדי הפנימייה, תעריפים ותוספות חודשיות קבועות.</p>
       <div className="space-y-2">
         {staff.map((s) => (
@@ -327,27 +333,9 @@ export function StaffSection({
         {staff.length === 0 && <p className="text-sm text-slate-500">אין עדיין עובדים בפנימייה זו</p>}
       </div>
 
-      <form action={handleAdd} className="mt-4 flex flex-wrap items-end gap-2 border-t border-slate-200 pt-4">
-        <div>
-          <label className="mb-1 block text-xs font-medium text-slate-500">שם עובד חדש</label>
-          <input name="full_name" required className="w-44 rounded-lg border border-slate-200 px-2 py-1.5 text-sm" />
-        </div>
-        <div>
-          <label className="mb-1 block text-xs font-medium text-slate-500">אופן תשלום</label>
-          <select name="pay_mode" defaultValue="hourly" className="w-32 rounded-lg border border-slate-200 px-2 py-1.5 text-sm">
-            <option value="hourly">שעתי</option>
-            <option value="monthly">חודשי</option>
-          </select>
-        </div>
-        <button
-          disabled={isPending}
-          className="rounded-xl bg-indigo-600 px-4 py-2 text-xs font-semibold text-white shadow-xs transition-all hover:bg-indigo-700 disabled:opacity-60"
-        >
-          {isPending ? "מוסיף..." : "הוספת עובד"}
-        </button>
-      </form>
-
       <ImportStaffForm facilityId={facilityId} />
+
+      {modalOpen && <AddStaffModal facilityId={facilityId} roles={roles} onClose={() => setModalOpen(false)} />}
     </section>
   );
 }

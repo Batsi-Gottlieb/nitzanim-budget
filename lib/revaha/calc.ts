@@ -2,6 +2,31 @@ import { Facility, FacilityExpenseLineItem, Role, Staff, StaffRoleAssignment, St
 
 const AVG_WEEKS_PER_MONTH = 4.3;
 
+function timeToMinutes(time: string): number {
+  const [h, m] = time.split(":").map(Number);
+  return h * 60 + (m || 0);
+}
+
+/**
+ * Total weekly hours for one role assignment, from whichever schedule method it uses.
+ * Detailed shifts crossing midnight (e.g. a night shift 23:00-07:00) wrap around the day.
+ * No overtime multiplier applied yet — that engine is a follow-up phase.
+ */
+export function weeklyHoursForAssignment(assignment: StaffRoleAssignment): number {
+  if (assignment.schedule_method === "consolidated") {
+    return (assignment.weekday_hours ?? 0) + (assignment.weekend_hours ?? 0);
+  }
+  const shifts = assignment.daily_shifts ?? {};
+  let total = 0;
+  for (const shift of Object.values(shifts)) {
+    if (!shift?.start || !shift?.end) continue;
+    let diff = timeToMinutes(shift.end) - timeToMinutes(shift.start);
+    if (diff <= 0) diff += 24 * 60;
+    total += diff / 60;
+  }
+  return total;
+}
+
 /**
  * Basic estimate only — no overtime rules yet (planned for a follow-up phase
  * once the detailed clock-in/clock-out reference sheets are available).
@@ -44,7 +69,7 @@ export function computeFacilityBudget(
     const role = roles.find((r) => r.id === a.role_id);
     const baseRate = staffBaseHourlyRate(staff);
     const rate = roleTypeRateFor(staff.id, role?.role_type_id, roleTypeRates, baseRate);
-    wageMonthly += (a.weekly_hours ?? 0) * rate * AVG_WEEKS_PER_MONTH;
+    wageMonthly += weeklyHoursForAssignment(a) * rate * AVG_WEEKS_PER_MONTH;
   }
 
   const staffAdditionsMonthly = staffList.reduce(

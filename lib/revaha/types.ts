@@ -89,11 +89,23 @@ export type StaffRoleTypeRate = {
   hourly_rate: number | null;
 };
 
+export type ScheduleMethod = "detailed" | "consolidated";
+export const WEEKDAY_LABELS = ["יום א׳", "יום ב׳", "יום ג׳", "יום ד׳", "יום ה׳", "יום ו׳", "שבת"] as const;
+/** Roles allowed to choose between detailed (day-by-day) and consolidated scheduling. All other roles use consolidated only. */
+export const SCHEDULE_CHOICE_ROLES = ["מדריכים", "אם בית"];
+
+export type DayShift = { start: string; end: string };
+/** Keyed by weekday index as a string: "0" = Sunday ... "6" = Saturday. */
+export type DailyShifts = Partial<Record<"0" | "1" | "2" | "3" | "4" | "5" | "6", DayShift>>;
+
 export type StaffRoleAssignment = {
   id: string;
   staff_id: string;
   role_id: string;
-  weekly_hours: number | null;
+  schedule_method: ScheduleMethod;
+  weekday_hours: number | null;
+  weekend_hours: number | null;
+  daily_shifts: DailyShifts | null;
 };
 
 export type FacilityExpenseLineItem = {

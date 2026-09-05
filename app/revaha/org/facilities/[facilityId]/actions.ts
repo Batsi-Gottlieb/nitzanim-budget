@@ -23,24 +23,23 @@ function cellNumber(value: ExcelJS.CellValue): number | null {
   return Number.isNaN(n) ? null : n;
 }
 
-export async function createStaff(facilityId: string, formData: FormData) {
-  const supabase = await createClient();
-  const payMode = formData.get("pay_mode") as string;
-  const { error } = await supabase.from("staff_revaha").insert({
-    facility_id: facilityId,
-    full_name: formData.get("full_name") as string,
-    pay_mode: payMode,
-    hourly_rate: payMode === "hourly" ? num(formData, "hourly_rate") : null,
-    monthly_salary: payMode === "monthly" ? num(formData, "monthly_salary") : null,
-    monthly_hours: payMode === "monthly" ? num(formData, "monthly_hours") : null,
-    monthly_addition: num(formData, "monthly_addition"),
-    monthly_travel: num(formData, "monthly_travel"),
-    has_training_fund: formData.get("has_training_fund") === "on",
-    employment_type: (formData.get("employment_type") as string) || "שכיר",
-  });
-  if (error) return { error: error.message };
-  revalidatePath(`/revaha/org/facilities/${facilityId}`);
-  return { error: null };
+function parseScheduleFromForm(formData: FormData, prefix = "") {
+  const method = (formData.get(`${prefix}schedule_method`) as string) || "consolidated";
+  if (method === "detailed") {
+    const daily_shifts: Record<string, { start: string; end: string }> = {};
+    for (let i = 0; i < 7; i++) {
+      const start = formData.get(`${prefix}shift_${i}_start`) as string;
+      const end = formData.get(`${prefix}shift_${i}_end`) as string;
+      if (start && end) daily_shifts[String(i)] = { start, end };
+    }
+    return { schedule_method: "detailed" as const, weekday_hours: null, weekend_hours: null, daily_shifts };
+  }
+  return {
+    schedule_method: "consolidated" as const,
+    weekday_hours: num(formData, `${prefix}weekday_hours`),
+    weekend_hours: num(formData, `${prefix}weekend_hours`),
+    daily_shifts: null,
+  };
 }
 
 export async function updateStaff(staffId: string, facilityId: string, formData: FormData) {
@@ -67,6 +66,45 @@ export async function deleteStaff(staffId: string, facilityId: string) {
   const supabase = await createClient();
   await supabase.from("staff_revaha").delete().eq("id", staffId);
   revalidatePath(`/revaha/org/facilities/${facilityId}`);
+}
+
+export async function createStaffWithAssignments(facilityId: string, formData: FormData) {
+  const supabase = await createClient();
+  const payMode = formData.get("pay_mode") as string;
+  const { data: staffRow, error } = await supabase
+    .from("staff_revaha")
+    .insert({
+      facility_id: facilityId,
+      full_name: formData.get("full_name") as string,
+      pay_mode: payMode,
+      hourly_rate: payMode === "hourly" ? num(formData, "hourly_rate") : null,
+      monthly_salary: payMode === "monthly" ? num(formData, "monthly_salary") : null,
+      monthly_hours: payMode === "monthly" ? num(formData, "monthly_hours") : null,
+      monthly_addition: num(formData, "monthly_addition"),
+      monthly_travel: num(formData, "monthly_travel"),
+      has_training_fund: formData.get("has_training_fund") === "on",
+      employment_type: (formData.get("employment_type") as string) || "שכיר",
+    })
+    .select()
+    .single();
+  if (error) return { error: error.message };
+
+  const roleKeys = ((formData.get("role_keys") as string) || "").split(",").filter(Boolean);
+  const assignments = [];
+  for (const key of roleKeys) {
+    const prefix = `role_${key}_`;
+    const roleId = formData.get(`${prefix}id`) as string;
+    if (!roleId) continue;
+    assignments.push({ staff_id: staffRow.id, role_id: roleId, ...parseScheduleFromForm(formData, prefix) });
+  }
+
+  if (assignments.length) {
+    const { error: assignError } = await supabase.from("staff_role_assignments_revaha").insert(assignments);
+    if (assignError) return { error: assignError.message };
+  }
+
+  revalidatePath(`/revaha/org/facilities/${facilityId}`);
+  return { error: null };
 }
 
 export async function upsertStaffRoleTypeRate(staffId: string, facilityId: string, formData: FormData) {
@@ -96,7 +134,7 @@ export async function createStaffRoleAssignment(facilityId: string, formData: Fo
   const { error } = await supabase.from("staff_role_assignments_revaha").insert({
     staff_id,
     role_id,
-    weekly_hours: num(formData, "weekly_hours"),
+    ...parseScheduleFromForm(formData),
   });
   if (error) return { error: error.message };
   revalidatePath(`/revaha/org/facilities/${facilityId}`);
@@ -107,7 +145,7 @@ export async function updateStaffRoleAssignment(id: string, facilityId: string, 
   const supabase = await createClient();
   await supabase
     .from("staff_role_assignments_revaha")
-    .update({ weekly_hours: num(formData, "weekly_hours") })
+    .update(parseScheduleFromForm(formData))
     .eq("id", id);
   revalidatePath(`/revaha/org/facilities/${facilityId}`);
 }

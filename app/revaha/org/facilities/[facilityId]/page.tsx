@@ -55,7 +55,13 @@ export default async function RevahaFacilityDetailPage({ params }: { params: Pro
       </div>
 
       <FacilityDetailForm facility={facility} models={models ?? []} />
-      <StaffSection facilityId={facilityId} staff={staffList} roleTypes={roleTypes ?? []} roleTypeRates={roleTypeRatesForStaff} />
+      <StaffSection
+        facilityId={facilityId}
+        staff={staffList}
+        roleTypes={roleTypes ?? []}
+        roleTypeRates={roleTypeRatesForStaff}
+        roles={roles ?? []}
+      />
       <RoleAssignmentsSection facilityId={facilityId} staff={staffList} roles={roles ?? []} assignments={assignmentList} />
       <ExpensesSection facilityId={facilityId} items={expenses ?? []} />
     </div>
