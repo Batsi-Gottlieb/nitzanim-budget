@@ -1,10 +1,12 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useActionState, useRef, useState, useTransition } from "react";
+import { FileSpreadsheet, Upload } from "lucide-react";
 import {
   createStaff,
   deleteStaff,
   deleteStaffRoleTypeRate,
+  importStaffFromExcel,
   updateStaff,
   upsertStaffRoleTypeRate,
 } from "./actions";
@@ -241,6 +243,54 @@ function StaffRow({
   );
 }
 
+function ImportStaffForm({ facilityId }: { facilityId: string }) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [state, formAction, isPending] = useActionState<{ error: string | null; count?: number }, FormData>(
+    async (_prev, formData) => {
+      const result = await importStaffFromExcel(facilityId, formData);
+      if (!result.error && fileInputRef.current) fileInputRef.current.value = "";
+      return result;
+    },
+    { error: null }
+  );
+
+  return (
+    <div className="mt-4 rounded-xl border border-dashed border-slate-300 bg-slate-50/60 p-3">
+      <div className="mb-2 flex items-center gap-1.5 text-xs font-bold text-slate-500">
+        <FileSpreadsheet className="h-3.5 w-3.5" />
+        ייבוא עובדים מאקסל
+      </div>
+      <form action={formAction} className="flex flex-wrap items-center gap-2">
+        <input
+          ref={fileInputRef}
+          name="file"
+          type="file"
+          accept=".xlsx"
+          required
+          className="w-56 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs"
+        />
+        <button
+          disabled={isPending}
+          className="flex items-center gap-1.5 rounded-xl bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white shadow-xs transition-all hover:bg-indigo-700 disabled:opacity-60"
+        >
+          <Upload className="h-3.5 w-3.5" />
+          {isPending ? "מייבא..." : "ייבוא"}
+        </button>
+        <a
+          href="/api/revaha/staff-template"
+          className="text-xs font-semibold text-indigo-600 hover:underline"
+        >
+          הורדת תבנית לדוגמה
+        </a>
+      </form>
+      {state.error && <p className="mt-2 text-xs text-red-600">{state.error}</p>}
+      {state.count !== undefined && !state.error && (
+        <p className="mt-2 text-xs text-emerald-600">יובאו {state.count} עובדים בהצלחה</p>
+      )}
+    </div>
+  );
+}
+
 export function StaffSection({
   facilityId,
   staff,
@@ -296,6 +346,8 @@ export function StaffSection({
           {isPending ? "מוסיף..." : "הוספת עובד"}
         </button>
       </form>
+
+      <ImportStaffForm facilityId={facilityId} />
     </section>
   );
 }

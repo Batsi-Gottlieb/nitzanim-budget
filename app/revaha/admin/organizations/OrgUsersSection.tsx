@@ -1,9 +1,41 @@
 "use client";
 
 import { useActionState, useState, useTransition } from "react";
-import { addUserToOrganization, resetOrgUserPassword } from "./actions";
+import { LogIn } from "lucide-react";
+import { addUserToOrganization, impersonateOrgUser, resetOrgUserPassword, setOrgUserPassword } from "./actions";
 
 type UserRow = { id: string; email: string | null; full_name: string | null };
+
+function SetPasswordForm({ userId, organizationId }: { userId: string; organizationId: string }) {
+  const [state, formAction, isPending] = useActionState<{ error: string | null; ok?: boolean }, FormData>(
+    async (_prev, formData) => {
+      const result = await setOrgUserPassword(userId, organizationId, formData);
+      return { error: result.error, ok: !result.error };
+    },
+    { error: null }
+  );
+
+  return (
+    <form action={formAction} className="mt-2 flex flex-wrap items-center gap-2">
+      <input
+        name="password"
+        type="text"
+        placeholder="סיסמה חדשה (6 תווים לפחות)"
+        required
+        minLength={6}
+        className="w-52 rounded-lg border border-slate-200 px-2.5 py-1 text-xs"
+      />
+      <button
+        disabled={isPending}
+        className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-white disabled:opacity-60"
+      >
+        {isPending ? "שומר..." : "קביעת סיסמה"}
+      </button>
+      {state.error && <span className="text-xs text-red-600">{state.error}</span>}
+      {state.ok && <span className="text-xs text-emerald-600">הסיסמה עודכנה</span>}
+    </form>
+  );
+}
 
 export function OrgUsersSection({ organizationId, initialUsers }: { organizationId: string; initialUsers: UserRow[] }) {
   const [users, setUsers] = useState(initialUsers);
@@ -51,9 +83,20 @@ export function OrgUsersSection({ organizationId, initialUsers }: { organization
                 onClick={() => handleResetPassword(u.id)}
                 className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-white disabled:opacity-60"
               >
-                איפוס סיסמה
+                סיסמה אקראית חדשה
               </button>
+              <form action={impersonateOrgUser}>
+                <input type="hidden" name="user_id" value={u.id} />
+                <button
+                  type="submit"
+                  className="flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700"
+                >
+                  <LogIn className="h-3.5 w-3.5" />
+                  כניסה כמשתמש זה
+                </button>
+              </form>
             </div>
+            <SetPasswordForm userId={u.id} organizationId={organizationId} />
             {revealed[u.id] && (
               <p className="mt-2 rounded-lg bg-indigo-50 p-2 text-xs text-slate-700">
                 סיסמה חדשה (הציגו פעם אחת): <span className="font-mono font-semibold">{revealed[u.id]}</span>

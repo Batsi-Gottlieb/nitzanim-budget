@@ -1,5 +1,6 @@
 "use server";
 
+import ExcelJS from "exceljs";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 
@@ -7,6 +8,18 @@ function num(formData: FormData, key: string): number | null {
   const raw = formData.get(key) as string;
   if (raw === null || raw === "") return null;
   const n = Number(raw);
+  return Number.isNaN(n) ? null : n;
+}
+
+function cellText(value: ExcelJS.CellValue): string {
+  if (value === null || value === undefined) return "";
+  if (typeof value === "object" && "text" in (value as object)) return String((value as { text: unknown }).text);
+  return String(value).trim();
+}
+
+function cellNumber(value: ExcelJS.CellValue): number | null {
+  if (value === null || value === undefined || value === "") return null;
+  const n = Number(value);
   return Number.isNaN(n) ? null : n;
 }
 
@@ -137,4 +150,54 @@ export async function deleteExpenseLineItem(id: string, facilityId: string) {
   const supabase = await createClient();
   await supabase.from("facility_expense_line_items_revaha").delete().eq("id", id);
   revalidatePath(`/revaha/org/facilities/${facilityId}`);
+}
+
+export async function importStaffFromExcel(facilityId: string, formData: FormData) {
+  const file = formData.get("file") as File | null;
+  if (!file || file.size === 0) return { error: "יש לבחור קובץ אקסל" };
+
+  const buffer = await file.arrayBuffer();
+  const workbook = new ExcelJS.Workbook();
+  try {
+    await workbook.xlsx.load(buffer as ExcelJS.Buffer);
+  } catch {
+    return { error: "לא ניתן לקרוא את קובץ האקסל. יש להשתמש בתבנית שסופקה." };
+  }
+
+  const sheet = workbook.worksheets[0];
+  if (!sheet) return { error: "הקובץ ריק" };
+
+  const rows: Record<string, unknown>[] = [];
+  sheet.eachRow((row, rowNumber) => {
+    if (rowNumber === 1) return; // header row
+    const fullName = cellText(row.getCell(1).value);
+    if (!fullName) return;
+
+    const payModeRaw = cellText(row.getCell(2).value);
+    const payMode: "hourly" | "monthly" = payModeRaw.includes("חודשי") ? "monthly" : "hourly";
+    const employmentTypeRaw = cellText(row.getCell(9).value);
+    const trainingFundRaw = cellText(row.getCell(8).value);
+
+    rows.push({
+      facility_id: facilityId,
+      full_name: fullName,
+      pay_mode: payMode,
+      hourly_rate: payMode === "hourly" ? cellNumber(row.getCell(3).value) : null,
+      monthly_salary: payMode === "monthly" ? cellNumber(row.getCell(4).value) : null,
+      monthly_hours: payMode === "monthly" ? cellNumber(row.getCell(5).value) : null,
+      monthly_addition: cellNumber(row.getCell(6).value),
+      monthly_travel: cellNumber(row.getCell(7).value),
+      has_training_fund: trainingFundRaw.includes("כן"),
+      employment_type: employmentTypeRaw.includes("עצמאי") ? "עצמאי" : "שכיר",
+    });
+  });
+
+  if (rows.length === 0) return { error: "לא נמצאו שורות עובדים תקינות בקובץ" };
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("staff_revaha").insert(rows);
+  if (error) return { error: error.message };
+
+  revalidatePath(`/revaha/org/facilities/${facilityId}`);
+  return { error: null, count: rows.length };
 }
