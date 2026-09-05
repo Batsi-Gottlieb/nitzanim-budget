@@ -17,7 +17,7 @@ export default async function RevahaFacilityModelDetailPage({ params }: { params
       supabase.from("role_types_revaha").select("*").order("name"),
       supabase.from("roles_revaha").select("*").order("name"),
       supabase.from("facility_model_roles_revaha").select("*").eq("facility_model_id", modelId),
-      supabase.from("facility_model_roles_revaha").select("facility_model_id, monthly_hours_full_time"),
+      supabase.from("facility_model_roles_revaha").select("facility_model_id, required_positions, monthly_hours_full_time"),
     ]);
 
   if (!model) notFound();
@@ -27,7 +27,8 @@ export default async function RevahaFacilityModelDetailPage({ params }: { params
 
   const hoursByModel = new Map<string, number>();
   for (const r of allRequirements ?? []) {
-    hoursByModel.set(r.facility_model_id, (hoursByModel.get(r.facility_model_id) ?? 0) + (r.monthly_hours_full_time ?? 0));
+    const roleHours = (r.required_positions ?? 0) * (r.monthly_hours_full_time ?? 0);
+    hoursByModel.set(r.facility_model_id, (hoursByModel.get(r.facility_model_id) ?? 0) + roleHours);
   }
 
   return (

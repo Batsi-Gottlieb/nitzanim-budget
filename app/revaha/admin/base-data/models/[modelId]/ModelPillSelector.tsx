@@ -16,7 +16,9 @@ export function ModelPillSelector({ models, activeModelId }: { models: ModelPill
             }`}
           >
             <span>{m.name}</span>
-            {m.totalHours > 0 && <span className="text-[10px] font-normal opacity-80">({m.totalHours} ש&apos;)</span>}
+            {m.totalHours > 0 && (
+              <span className="text-[10px] font-normal opacity-80">({Math.round(m.totalHours).toLocaleString("he-IL")} ש&apos;)</span>
+            )}
           </Link>
         );
       })}
