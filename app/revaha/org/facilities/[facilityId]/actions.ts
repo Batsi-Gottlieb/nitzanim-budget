@@ -234,7 +234,7 @@ type ImportRow = {
   monthly_travel: number | null;
   has_training_fund: boolean;
   employment_type: "שכיר" | "עצמאי";
-  weekend_days_per_month: number | null;
+  weekends_per_month: number | null;
 };
 
 const DAY_GRID_START_COL = 9; // columns 9..22: 7 days * (start,end)
@@ -293,7 +293,7 @@ export async function importStaffFromExcel(facilityId: string, formData: FormDat
       monthly_travel: cellNumber(row.getCell(26).value),
       has_training_fund: trainingFundRaw.includes("כן"),
       employment_type: employmentTypeRaw.includes("עצמאי") ? "עצמאי" : "שכיר",
-      weekend_days_per_month: cellNumber(row.getCell(29).value),
+      weekends_per_month: cellNumber(row.getCell(29).value),
     });
   });
 
@@ -302,11 +302,11 @@ export async function importStaffFromExcel(facilityId: string, formData: FormDat
   const supabase = await createClient();
   const warnings: string[] = [];
 
-  const weekendDaysPerMonth = rows.find((r) => r.weekend_days_per_month !== null)?.weekend_days_per_month ?? null;
-  if (weekendDaysPerMonth !== null) {
+  const weekendsPerMonth = rows.find((r) => r.weekends_per_month !== null)?.weekends_per_month ?? null;
+  if (weekendsPerMonth !== null) {
     await supabase
       .from("facilities_revaha")
-      .update({ weekend_days_per_month: weekendDaysPerMonth })
+      .update({ weekends_per_month: weekendsPerMonth })
       .eq("id", facilityId);
   }
 

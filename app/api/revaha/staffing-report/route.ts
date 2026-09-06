@@ -3,7 +3,9 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentRevahaProfile } from "@/lib/revaha/auth";
 import {
+  DEFAULT_WEEKENDS_PER_MONTH,
   assignmentHourlyRate,
+  assignmentMonthlyWage,
   computeFacilityBudget,
   mergeRoleStaffingSummaries,
   monthlyHoursForAssignment,
@@ -90,32 +92,36 @@ export async function GET() {
     views: [{ rightToLeft: true, state: "frozen", ySplit: 3 }],
   });
   setTabColor(facilitySheet, TAB_COLORS.facilitySummary);
-  styleTitleRow(facilitySheet, "F", "סיכום רשתי לפי פנימייה");
+  styleTitleRow(facilitySheet, "G", "סיכום רשתי לפי פנימייה");
   const facilityHeader = facilitySheet.addRow([
     "פנימייה",
     "מס' עובדים",
+    "סופי שבוע בחודש בממוצע",
     "שכר חודשי",
     "תוספות ונסיעות",
     "הוצאות שוטפות",
     "תקציב חודשי כולל",
   ]);
   styleHeaderRow(facilityHeader);
-  facilitySheet.autoFilter = { from: "A3", to: "F3" };
+  facilitySheet.autoFilter = { from: "A3", to: "G3" };
   perFacility.forEach((p, i) => {
     const dataRow = facilitySheet.addRow([
       p.facility.name,
       p.staffCount,
+      p.facility.weekends_per_month ?? DEFAULT_WEEKENDS_PER_MONTH,
       p.budget.wageMonthly,
       p.budget.staffAdditionsMonthly,
       p.budget.expensesMonthly,
       p.budget.totalMonthly,
     ]);
     styleDataRow(dataRow, i);
-    for (let c = 3; c <= 6; c++) dataRow.getCell(c).numFmt = '"₪"#,##0';
+    dataRow.getCell(3).numFmt = "0.0";
+    for (let c = 4; c <= 7; c++) dataRow.getCell(c).numFmt = '"₪"#,##0';
   });
   facilitySheet.getColumn(1).width = 24;
   facilitySheet.getColumn(2).width = 12;
-  for (let c = 3; c <= 6; c++) facilitySheet.getColumn(c).width = 18;
+  facilitySheet.getColumn(3).width = 16;
+  for (let c = 4; c <= 7; c++) facilitySheet.getColumn(c).width = 18;
 
   // ---- Sheet 2: שיבוץ עובדים — כל הרשת (role-type header + day-by-day matrix, all facilities) ----
   const matrixLastCol = "M"; // "", פנימייה, שם עובד, תפקיד, אחוז משרה, 7 days, סה"כ = 5 + 7 + 1 = 13 cols
@@ -268,7 +274,7 @@ export async function GET() {
       weekend,
       Math.round(monthlyHours * 10) / 10,
       Math.round(hourlyRate * 100) / 100,
-      Math.round(monthlyHours * hourlyRate),
+      Math.round(assignmentMonthlyWage(a, facility)),
     ]);
     styleDataRow(dataRow, i);
     dataRow.getCell(5).numFmt = "#,##0.0";

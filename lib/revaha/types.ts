@@ -95,7 +95,7 @@ export type Facility = {
   facility_model_id: string | null;
   occupancy_actual: number | null;
   occupancy_tender: number | null;
-  weekend_days_per_month: number | null;
+  weekends_per_month: number | null;
 };
 
 export type PayMode = "hourly" | "monthly";

@@ -25,7 +25,7 @@ export async function createFacility(formData: FormData) {
       facility_model_id: (formData.get("facility_model_id") as string) || null,
       occupancy_actual: num(formData, "occupancy_actual"),
       occupancy_tender: num(formData, "occupancy_tender"),
-      weekend_days_per_month: num(formData, "weekend_days_per_month"),
+      weekends_per_month: num(formData, "weekends_per_month"),
     })
     .select()
     .single();
@@ -44,7 +44,7 @@ export async function updateFacility(facilityId: string, formData: FormData) {
       facility_model_id: (formData.get("facility_model_id") as string) || null,
       occupancy_actual: num(formData, "occupancy_actual"),
       occupancy_tender: num(formData, "occupancy_tender"),
-      weekend_days_per_month: num(formData, "weekend_days_per_month"),
+      weekends_per_month: num(formData, "weekends_per_month"),
     })
     .eq("id", facilityId);
   revalidatePath(`/revaha/org/facilities/${facilityId}`);

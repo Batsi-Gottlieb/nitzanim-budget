@@ -45,9 +45,9 @@ export function CreateFacilityForm({ models }: { models: FacilityModel[] }) {
           <input name="occupancy_tender" type="number" className="w-32 rounded-lg border border-slate-200 px-2 py-1.5 text-sm" />
         </div>
         <div>
-          <label className="mb-1 block text-xs font-medium text-slate-500">ממוצע ימי שישי-שבת בחודש</label>
+          <label className="mb-1 block text-xs font-medium text-slate-500">כמה סופי שבוע בחודש בממוצע</label>
           <input
-            name="weekend_days_per_month"
+            name="weekends_per_month"
             type="number"
             step="0.1"
             className="w-40 rounded-lg border border-slate-200 px-2 py-1.5 text-sm"

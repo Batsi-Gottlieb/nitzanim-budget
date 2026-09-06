@@ -1,7 +1,7 @@
 import { Facility, FacilityExpenseLineItem, FacilityModelRole, Role, RoleType, Staff, StaffRoleAssignment } from "./types";
 
-const AVG_WEEKS_PER_MONTH = 4.3;
-const DEFAULT_WEEKEND_DAYS_PER_MONTH = 8.6;
+export const AVG_WEEKS_PER_MONTH = 4.3;
+export const DEFAULT_WEEKENDS_PER_MONTH = 4.3;
 
 function timeToMinutes(time: string): number {
   const [h, m] = time.split(":").map(Number);
@@ -39,25 +39,38 @@ export function weeklyHoursForAssignment(assignment: StaffRoleAssignment): numbe
 
 /**
  * Monthly hours for one role assignment: the weekday portion scales with the average number of
- * weeks per month, the weekend portion scales with the facility's own average Fri+Sat days per
- * month (a "weekend occurrence" spans 2 days, so the multiplier is that count divided by 2).
- * Facilities without an explicit value fall back to 8.6 (=2 days * 4.3 weeks), which reproduces
- * the previous flat-4.3-for-everything behavior exactly.
+ * weeks per month, the weekend portion scales with the facility's own average number of weekends
+ * (Fri+Sat occurrences) per month — not every facility staffs every single weekend. Facilities
+ * without an explicit value fall back to 4.3 (one every week), which reproduces the previous
+ * flat-4.3-for-everything behavior exactly.
  */
-export function monthlyHoursForAssignment(assignment: StaffRoleAssignment, facility: Pick<Facility, "weekend_days_per_month">): number {
+export function monthlyHoursForAssignment(assignment: StaffRoleAssignment, facility: Pick<Facility, "weekends_per_month">): number {
   const { weekday, weekend } = weeklyHourSplitForAssignment(assignment);
-  const weekendDaysPerMonth = facility.weekend_days_per_month ?? DEFAULT_WEEKEND_DAYS_PER_MONTH;
-  return weekday * AVG_WEEKS_PER_MONTH + weekend * (weekendDaysPerMonth / 2);
+  const weekendsPerMonth = facility.weekends_per_month ?? DEFAULT_WEEKENDS_PER_MONTH;
+  return weekday * AVG_WEEKS_PER_MONTH + weekend * weekendsPerMonth;
 }
 
 /**
- * Basic estimate only — no overtime rules yet (planned for a follow-up phase
- * once the detailed clock-in/clock-out reference sheets are available).
+ * Effective hourly rate for display/reference only (e.g. "תעריף שעתי אפקטיבי" in the pay-detail
+ * report) — NOT used to compute the actual monthly wage for a "monthly" assignment, since a fixed
+ * salary must not silently zero out just because monthly_hours was left blank. See
+ * assignmentMonthlyWage for the actual cost calculation.
  */
 export function assignmentHourlyRate(assignment: StaffRoleAssignment): number {
   if (assignment.pay_mode === "hourly") return assignment.hourly_rate ?? 0;
   if (assignment.monthly_hours && assignment.monthly_hours > 0) return (assignment.monthly_salary ?? 0) / assignment.monthly_hours;
   return 0;
+}
+
+/**
+ * Actual monthly wage cost for one assignment. An hourly assignment is hours actually scheduled
+ * times its rate; a monthly assignment is simply its fixed salary — it does not scale with
+ * scheduled hours (those may be entered for reference/occupancy-% purposes only), and must not
+ * disappear just because monthly_hours was left blank.
+ */
+export function assignmentMonthlyWage(assignment: StaffRoleAssignment, facility: Pick<Facility, "weekends_per_month">): number {
+  if (assignment.pay_mode === "monthly") return assignment.monthly_salary ?? 0;
+  return monthlyHoursForAssignment(assignment, facility) * (assignment.hourly_rate ?? 0);
 }
 
 export type FacilityBudgetSummary = {
@@ -75,7 +88,7 @@ export function computeFacilityBudget(
 ): FacilityBudgetSummary {
   let wageMonthly = 0;
   for (const a of assignments) {
-    wageMonthly += monthlyHoursForAssignment(a, facility) * assignmentHourlyRate(a);
+    wageMonthly += assignmentMonthlyWage(a, facility);
   }
 
   const staffAdditionsMonthly = staffList.reduce(

@@ -2,7 +2,9 @@ import ExcelJS from "exceljs";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import {
+  DEFAULT_WEEKENDS_PER_MONTH,
   assignmentHourlyRate,
+  assignmentMonthlyWage,
   monthlyHoursForAssignment,
   roleStaffingSummary,
   roleTypeStaffingSummary,
@@ -51,7 +53,14 @@ export async function GET(_request: Request, { params }: { params: Promise<{ fac
   setTabColor(scheduleSheet, TAB_COLORS.schedule);
   styleTitleRow(scheduleSheet, matrixLastCol, `שיבוץ צוות — ${facility.name}`);
 
-  let row = 3;
+  scheduleSheet.mergeCells(`A3:${matrixLastCol}3`);
+  const weekendsNote = scheduleSheet.getCell("A3");
+  weekendsNote.value = `כמה סופי שבוע בחודש בממוצע: ${facility.weekends_per_month ?? DEFAULT_WEEKENDS_PER_MONTH} (לפיו מחושבות שעות שישי-שבת החודשיות)`;
+  weekendsNote.font = { name: "Arial", size: 9, italic: true, color: { argb: "FF64748B" } };
+  weekendsNote.alignment = { horizontal: "center" };
+  scheduleSheet.getRow(3).height = 16;
+
+  let row = 4;
   if (typeSummary.length > 0) {
     const typeHeader = scheduleSheet.getRow(row);
     typeHeader.values = ["", "סוג תפקיד", "תקנים נדרשים", "תקנים משובצים", "פער תקנים"];
@@ -188,7 +197,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ fac
       weekend,
       Math.round(monthlyHours * 10) / 10,
       Math.round(hourlyRate * 100) / 100,
-      Math.round(monthlyHours * hourlyRate),
+      Math.round(assignmentMonthlyWage(a, facility)),
     ]);
     styleDataRow(dataRow, i);
     dataRow.getCell(4).numFmt = "#,##0.0";

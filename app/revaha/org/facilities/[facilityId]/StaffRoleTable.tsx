@@ -2,7 +2,7 @@
 
 import { Fragment, useMemo, useState, useTransition, type MouseEvent } from "react";
 import { Pencil, Search, Trash2, UserCog, UserPlus, UserX, Users } from "lucide-react";
-import { assignmentHourlyRate, monthlyHoursForAssignment } from "@/lib/revaha/calc";
+import { assignmentMonthlyWage, monthlyHoursForAssignment } from "@/lib/revaha/calc";
 import { Facility, PayMode, ScheduleMethod, DailyShifts, SCHEDULE_METHOD_LABELS } from "@/lib/revaha/types";
 import {
   createStaffRoleAssignment,
@@ -453,9 +453,7 @@ export function StaffRoleTable({
                       {row.kind === "assignment" ? fmtHours(monthlyHoursForAssignment(row.assignment, facility)) : "—"}
                     </td>
                     <td className="border-l border-slate-200 px-2 py-2 align-top font-semibold text-emerald-700">
-                      {row.kind === "assignment"
-                        ? `₪${fmtMoney(monthlyHoursForAssignment(row.assignment, facility) * assignmentHourlyRate(row.assignment))}`
-                        : "—"}
+                      {row.kind === "assignment" ? `₪${fmtMoney(assignmentMonthlyWage(row.assignment, facility))}` : "—"}
                     </td>
                     <td className="px-2 py-2 align-top">
                       <div className="flex flex-wrap gap-1.5">
