@@ -8,11 +8,11 @@ export default async function BrandedLoginPage({ params }: { params: Promise<{ t
   const adminClient = createAdminClient();
   const { data: company } = await adminClient
     .from("reseller_companies_revaha")
-    .select("name, logo_url, is_active")
+    .select("id, name, logo_url, is_active")
     .eq("url_token", token)
     .maybeSingle();
 
   if (!company || !company.is_active) notFound();
 
-  return <BrandedLoginForm companyName={company.name} logoUrl={company.logo_url} />;
+  return <BrandedLoginForm companyId={company.id} companyName={company.name} logoUrl={company.logo_url} />;
 }

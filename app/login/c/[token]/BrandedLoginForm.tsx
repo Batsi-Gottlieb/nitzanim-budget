@@ -3,8 +3,17 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { verifyCompanyLoginMatch } from "./actions";
 
-export function BrandedLoginForm({ companyName, logoUrl }: { companyName: string; logoUrl: string | null }) {
+export function BrandedLoginForm({
+  companyId,
+  companyName,
+  logoUrl,
+}: {
+  companyId: string;
+  companyName: string;
+  logoUrl: string | null;
+}) {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -17,11 +26,21 @@ export function BrandedLoginForm({ companyName, logoUrl }: { companyName: string
     setError(null);
     const supabase = createClient();
     const { error } = await supabase.auth.signInWithPassword({ email, password });
-    setLoading(false);
     if (error) {
+      setLoading(false);
       setError("אימייל או סיסמה שגויים");
       return;
     }
+
+    const match = await verifyCompanyLoginMatch(companyId);
+    if (!match.ok) {
+      setError("זו אינה כתובת הכניסה שלכם. מעביר/ה אתכם לכתובת הנכונה...");
+      await supabase.auth.signOut();
+      setLoading(false);
+      router.replace(match.correctUrl ?? "/login");
+      return;
+    }
+
     router.replace("/revaha");
     router.refresh();
   }
