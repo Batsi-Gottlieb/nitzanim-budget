@@ -114,8 +114,6 @@ export type Staff = {
 
 export type ScheduleMethod = "detailed" | "consolidated";
 export const WEEKDAY_LABELS = ["יום א׳", "יום ב׳", "יום ג׳", "יום ד׳", "יום ה׳", "יום ו׳", "שבת"] as const;
-/** Roles allowed to choose between detailed (day-by-day) and consolidated scheduling. All other roles use consolidated only. */
-export const SCHEDULE_CHOICE_ROLES = ["מדריכים", "אם בית"];
 /** User-facing phrasing for the two scheduling methods, used consistently across the UI, the bulk-import template, and the parser. */
 export const SCHEDULE_METHOD_LABELS: Record<ScheduleMethod, string> = {
   detailed: "א-ש (שכר קבוע)",
