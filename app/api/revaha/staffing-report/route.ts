@@ -15,7 +15,7 @@ import {
 } from "@/lib/revaha/calc";
 import { ScheduleMethod, SCHEDULE_METHOD_LABELS, WEEKDAY_LABELS } from "@/lib/revaha/types";
 import { roleTypeHexColor } from "@/lib/revaha/roleTypeColors";
-import { DELTA_FORMAT_HOURS, DELTA_FORMAT_POSITIONS, applyArialFont, styleDataRow, styleHeaderRow, styleTitleRow } from "@/lib/revaha/xlsxStyle";
+import { DELTA_FORMAT_HOURS, DELTA_FORMAT_POSITIONS, TAB_COLORS, applyArialFont, setTabColor, styleDataRow, styleHeaderRow, styleTitleRow } from "@/lib/revaha/xlsxStyle";
 
 export async function GET() {
   const session = await getCurrentRevahaProfile();
@@ -89,6 +89,7 @@ export async function GET() {
   const facilitySheet = workbook.addWorksheet("סיכום לפי פנימייה", {
     views: [{ rightToLeft: true, state: "frozen", ySplit: 3 }],
   });
+  setTabColor(facilitySheet, TAB_COLORS.facilitySummary);
   styleTitleRow(facilitySheet, "F", "סיכום רשתי לפי פנימייה");
   const facilityHeader = facilitySheet.addRow([
     "פנימייה",
@@ -119,6 +120,7 @@ export async function GET() {
   // ---- Sheet 2: שיבוץ עובדים — כל הרשת (role-type header + day-by-day matrix, all facilities) ----
   const matrixLastCol = "M"; // "", פנימייה, שם עובד, תפקיד, אחוז משרה, 7 days, סה"כ = 5 + 7 + 1 = 13 cols
   const scheduleSheet = workbook.addWorksheet("שיבוץ עובדים - כל הרשת", { views: [{ rightToLeft: true }] });
+  setTabColor(scheduleSheet, TAB_COLORS.schedule);
   styleTitleRow(scheduleSheet, matrixLastCol, "שיבוץ צוות — כל הרשת");
 
   let row = 3;
@@ -179,6 +181,7 @@ export async function GET() {
   const summarySheet = workbook.addWorksheet("סיכום לפי תפקיד - כל הרשת", {
     views: [{ rightToLeft: true, state: "frozen", ySplit: 3 }],
   });
+  setTabColor(summarySheet, TAB_COLORS.roleSummary);
   styleTitleRow(summarySheet, "I", "דוח שיבוץ צוות — כל הרשת");
 
   const summaryHeader = summarySheet.addRow([
@@ -231,6 +234,7 @@ export async function GET() {
   const detailSheet = workbook.addWorksheet("פירוט שכר ותעריפים - כל הרשת", {
     views: [{ rightToLeft: true, state: "frozen", ySplit: 3 }],
   });
+  setTabColor(detailSheet, TAB_COLORS.payDetail);
   styleTitleRow(detailSheet, "I", "פירוט שכר ותעריפים — כל הרשת");
 
   const detailHeader = detailSheet.addRow([

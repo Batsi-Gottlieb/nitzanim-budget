@@ -8,6 +8,19 @@ export const ALL_BORDERS = { top: THIN_BORDER, left: THIN_BORDER, bottom: THIN_B
 export const DELTA_FORMAT_POSITIONS = '[Green]0.00;[Red]\\-0.00;0.00';
 export const DELTA_FORMAT_HOURS = '[Green]#,##0.0;[Red]\\-#,##0.0;0.0';
 
+/** Sheet-tab colors, kept consistent between the per-facility and network-wide reports so the same
+ * kind of sheet (e.g. the scheduling matrix) always gets the same color across both workbooks. */
+export const TAB_COLORS = {
+  facilitySummary: "FFF59E0B", // amber-500 — one row per facility
+  schedule: "FF4F46E5", // indigo-600 — day-by-day matrix
+  roleSummary: "FF8B5CF6", // violet-500 — required vs. assigned per role
+  payDetail: "FF10B981", // emerald-500 — pay/rate detail
+} as const;
+
+export function setTabColor(sheet: ExcelJS.Worksheet, argb: string) {
+  sheet.properties.tabColor = { argb };
+}
+
 export function styleTitleRow(sheet: ExcelJS.Worksheet, lastCol: string, title: string) {
   sheet.mergeCells(`A1:${lastCol}1`);
   const cell = sheet.getCell("A1");

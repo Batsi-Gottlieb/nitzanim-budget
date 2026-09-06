@@ -68,7 +68,7 @@ function AssignmentEditForm({
   }
 
   return (
-    <form action={handleSave} className="mt-2 space-y-2 rounded-lg border border-slate-200 bg-white p-3">
+    <form action={handleSave} className="mt-2 space-y-2 rounded-xl border-2 border-indigo-200 bg-white p-3 shadow-sm">
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         <div>
           <label className="mb-1 block text-[11px] text-slate-500">אופן תשלום</label>
@@ -76,7 +76,7 @@ function AssignmentEditForm({
             name="pay_mode"
             value={payMode}
             onChange={(e) => setPayMode(e.target.value as PayMode)}
-            className="w-full rounded-lg border border-slate-200 px-2 py-1 text-sm"
+            className="w-full rounded-lg border border-slate-300 px-2 py-1 text-sm"
           >
             <option value="hourly">שעתי</option>
             <option value="monthly">חודשי</option>
@@ -141,7 +141,7 @@ function AddRoleForm({
   }
 
   return (
-    <form action={handleSave} className="mt-2 space-y-2 rounded-lg border border-slate-200 bg-white p-3">
+    <form action={handleSave} className="mt-2 space-y-2 rounded-xl border-2 border-indigo-200 bg-white p-3 shadow-sm">
       <input type="hidden" name="staff_id" value={staffId} />
       <div>
         <label className="mb-1 block text-[11px] text-slate-500">תפקיד</label>
@@ -150,7 +150,7 @@ function AddRoleForm({
           required
           value={roleId}
           onChange={(e) => setRoleId(e.target.value)}
-          className="w-52 rounded-lg border border-slate-200 px-2 py-1.5 text-sm"
+          className="w-52 rounded-lg border border-slate-300 px-2 py-1.5 text-sm"
         >
           <option value="">בחירת תפקיד...</option>
           {availableRoles.map((r) => (
@@ -169,7 +169,7 @@ function AddRoleForm({
                 name="pay_mode"
                 value={payMode}
                 onChange={(e) => setPayMode(e.target.value as PayMode)}
-                className="w-full rounded-lg border border-slate-200 px-2 py-1 text-sm"
+                className="w-full rounded-lg border border-slate-300 px-2 py-1 text-sm"
               >
                 <option value="hourly">שעתי</option>
                 <option value="monthly">חודשי</option>
@@ -218,26 +218,26 @@ function StaffIdentityEditForm({
   }
 
   return (
-    <form action={handleSave} className="mt-2 grid grid-cols-2 items-end gap-2 rounded-lg border border-slate-200 bg-white p-3 sm:grid-cols-6">
+    <form action={handleSave} className="mt-2 grid grid-cols-2 items-end gap-2 rounded-xl border-2 border-indigo-200 bg-white p-3 shadow-sm sm:grid-cols-6">
       <div>
         <label className="mb-1 block text-[11px] text-slate-500">שם</label>
-        <input name="full_name" defaultValue={staff.full_name} required className="w-full rounded-lg border border-slate-200 px-2 py-1 text-sm" />
+        <input name="full_name" defaultValue={staff.full_name} required className="w-full rounded-lg border border-slate-300 px-2 py-1 text-sm" />
       </div>
       <div>
         <label className="mb-1 block text-[11px] text-slate-500">טלפון</label>
-        <input name="phone" defaultValue={staff.phone ?? ""} className="w-full rounded-lg border border-slate-200 px-2 py-1 text-sm" />
+        <input name="phone" defaultValue={staff.phone ?? ""} className="w-full rounded-lg border border-slate-300 px-2 py-1 text-sm" />
       </div>
       <div>
         <label className="mb-1 block text-[11px] text-slate-500">תוספת חודשית</label>
-        <input name="monthly_addition" type="number" defaultValue={staff.monthly_addition ?? ""} className="w-full rounded-lg border border-slate-200 px-2 py-1 text-sm" />
+        <input name="monthly_addition" type="number" defaultValue={staff.monthly_addition ?? ""} className="w-full rounded-lg border border-slate-300 px-2 py-1 text-sm" />
       </div>
       <div>
         <label className="mb-1 block text-[11px] text-slate-500">נסיעות חודשי</label>
-        <input name="monthly_travel" type="number" defaultValue={staff.monthly_travel ?? ""} className="w-full rounded-lg border border-slate-200 px-2 py-1 text-sm" />
+        <input name="monthly_travel" type="number" defaultValue={staff.monthly_travel ?? ""} className="w-full rounded-lg border border-slate-300 px-2 py-1 text-sm" />
       </div>
       <div>
         <label className="mb-1 block text-[11px] text-slate-500">סוג העסקה</label>
-        <select name="employment_type" defaultValue={staff.employment_type} className="w-full rounded-lg border border-slate-200 px-2 py-1 text-sm">
+        <select name="employment_type" defaultValue={staff.employment_type} className="w-full rounded-lg border border-slate-300 px-2 py-1 text-sm">
           <option value="שכיר">שכיר</option>
           <option value="עצמאי">עצמאי</option>
         </select>
@@ -354,12 +354,12 @@ export function StaffRoleTable({
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="חיפוש לפי שם או טלפון..."
-          className="w-52 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs"
+          className="w-52 rounded-lg border-2 border-slate-300 px-2.5 py-1.5 text-xs"
         />
         <select
           value={roleFilter}
           onChange={(e) => setRoleFilter(e.target.value)}
-          className="rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs"
+          className="rounded-lg border-2 border-slate-300 px-2.5 py-1.5 text-xs"
         >
           <option value="">כל התפקידים</option>
           {roles.map((r) => (
@@ -381,23 +381,23 @@ export function StaffRoleTable({
         )}
       </div>
 
-      <div className="overflow-x-auto rounded-xl border border-slate-200">
-        <table className="w-full text-sm">
-          <thead className="bg-slate-50 text-right text-xs text-slate-500">
-            <tr>
-              <th className="w-8 px-2 py-2">
+      <div className="overflow-x-auto rounded-xl border-2 border-slate-300 shadow-sm">
+        <table className="w-full border-collapse text-sm">
+          <thead className="bg-slate-100 text-right text-xs font-semibold text-slate-600">
+            <tr className="border-b-2 border-slate-300">
+              <th className="w-8 border-l border-slate-200 px-2 py-2.5">
                 <input type="checkbox" checked={allSelected} onChange={toggleAll} className="h-4 w-4" />
               </th>
-              <th className="px-2 py-2">שם</th>
-              <th className="px-2 py-2">טלפון</th>
-              <th className="px-2 py-2">תפקיד</th>
-              <th className="px-2 py-2">שיטת שיבוץ</th>
-              <th className="px-2 py-2">שעות חודשיות</th>
-              <th className="px-2 py-2">שכר חודשי</th>
-              <th className="px-2 py-2">פעולות</th>
+              <th className="border-l border-slate-200 px-2 py-2.5">שם</th>
+              <th className="border-l border-slate-200 px-2 py-2.5">טלפון</th>
+              <th className="border-l border-slate-200 px-2 py-2.5">תפקיד</th>
+              <th className="border-l border-slate-200 px-2 py-2.5">שיטת שיבוץ</th>
+              <th className="border-l border-slate-200 px-2 py-2.5">שעות חודשיות</th>
+              <th className="border-l border-slate-200 px-2 py-2.5">שכר חודשי</th>
+              <th className="px-2 py-2.5">פעולות</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
+          <tbody className="divide-y divide-slate-200">
             {filteredRows.map((row, index) => {
               const key = rowKey(row);
               const isEditing = editingKey === key;
@@ -417,22 +417,22 @@ export function StaffRoleTable({
 
               return (
                 <Fragment key={key}>
-                  <tr className="cursor-pointer text-slate-900 hover:bg-slate-50/60" onClick={handleRowClick}>
-                    <td className="px-2 py-2 align-top">
+                  <tr className="cursor-pointer text-slate-900 hover:bg-indigo-50/40" onClick={handleRowClick}>
+                    <td className="border-l border-slate-200 px-2 py-2 align-top">
                       <input type="checkbox" checked={selected.has(key)} onChange={() => toggleOne(key)} className="h-4 w-4" />
                     </td>
-                    <td className="px-2 py-2 align-top font-medium">{row.staff.full_name}</td>
-                    <td className="px-2 py-2 align-top text-slate-500">{row.staff.phone ?? "—"}</td>
-                    <td className="px-2 py-2 align-top">
+                    <td className="border-l border-slate-200 px-2 py-2 align-top font-medium">{row.staff.full_name}</td>
+                    <td className="border-l border-slate-200 px-2 py-2 align-top text-slate-500">{row.staff.phone ?? "—"}</td>
+                    <td className="border-l border-slate-200 px-2 py-2 align-top">
                       {row.kind === "assignment" ? row.role?.name ?? "?" : <span className="text-slate-400">— ללא תפקיד —</span>}
                     </td>
-                    <td className="px-2 py-2 align-top text-slate-500">
+                    <td className="border-l border-slate-200 px-2 py-2 align-top text-slate-500">
                       {row.kind === "assignment" ? SCHEDULE_METHOD_LABELS[row.assignment.schedule_method] : "—"}
                     </td>
-                    <td className="px-2 py-2 align-top text-slate-500">
+                    <td className="border-l border-slate-200 px-2 py-2 align-top font-semibold text-slate-700">
                       {row.kind === "assignment" ? fmtHours(monthlyHoursForAssignment(row.assignment, facility)) : "—"}
                     </td>
-                    <td className="px-2 py-2 align-top text-slate-500">
+                    <td className="border-l border-slate-200 px-2 py-2 align-top font-semibold text-emerald-700">
                       {row.kind === "assignment"
                         ? `₪${fmtMoney(monthlyHoursForAssignment(row.assignment, facility) * assignmentHourlyRate(row.assignment))}`
                         : "—"}
@@ -484,15 +484,15 @@ export function StaffRoleTable({
                     </td>
                   </tr>
                   {isIdentityEditing && (
-                    <tr key={`${key}-identity`}>
-                      <td colSpan={8} className="bg-slate-50/60 px-2 pb-3">
+                    <tr key={`${key}-identity`} className="bg-slate-50">
+                      <td colSpan={8} className="px-2 pb-3 pt-1">
                         <StaffIdentityEditForm staff={row.staff} facilityId={facilityId} onDone={() => setIdentityEditId(null)} />
                       </td>
                     </tr>
                   )}
                   {isEditing && row.kind === "assignment" && (
-                    <tr key={`${key}-edit`}>
-                      <td colSpan={8} className="bg-slate-50/60 px-2 pb-3">
+                    <tr key={`${key}-edit`} className="bg-slate-50">
+                      <td colSpan={8} className="px-2 pb-3 pt-1">
                         <AssignmentEditForm
                           assignment={row.assignment}
                           facilityId={facilityId}
@@ -503,8 +503,8 @@ export function StaffRoleTable({
                     </tr>
                   )}
                   {isAddingRole && (
-                    <tr key={`${key}-add-role`}>
-                      <td colSpan={8} className="bg-slate-50/60 px-2 pb-3">
+                    <tr key={`${key}-add-role`} className="bg-slate-50">
+                      <td colSpan={8} className="px-2 pb-3 pt-1">
                         <AddRoleForm
                           staffId={row.staff.id}
                           availableRoles={availableRoles}

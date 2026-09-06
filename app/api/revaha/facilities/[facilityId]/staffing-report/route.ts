@@ -12,7 +12,7 @@ import {
 } from "@/lib/revaha/calc";
 import { ScheduleMethod, SCHEDULE_METHOD_LABELS, WEEKDAY_LABELS } from "@/lib/revaha/types";
 import { roleTypeHexColor } from "@/lib/revaha/roleTypeColors";
-import { DELTA_FORMAT_HOURS, DELTA_FORMAT_POSITIONS, applyArialFont, styleDataRow, styleHeaderRow, styleTitleRow } from "@/lib/revaha/xlsxStyle";
+import { DELTA_FORMAT_HOURS, DELTA_FORMAT_POSITIONS, TAB_COLORS, applyArialFont, setTabColor, styleDataRow, styleHeaderRow, styleTitleRow } from "@/lib/revaha/xlsxStyle";
 
 export async function GET(_request: Request, { params }: { params: Promise<{ facilityId: string }> }) {
   const { facilityId } = await params;
@@ -48,6 +48,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ fac
   // ---- Sheet 1: שיבוץ עובדים — role-type summary header + day-by-day matrix ----
   const matrixLastCol = "K"; // "", שם עובד/סוג תפקיד, אחוז משרה, 7 days, סה"כ = 3 + 7 + 1 = 11 cols
   const scheduleSheet = workbook.addWorksheet("שיבוץ עובדים", { views: [{ rightToLeft: true }] });
+  setTabColor(scheduleSheet, TAB_COLORS.schedule);
   styleTitleRow(scheduleSheet, matrixLastCol, `שיבוץ צוות — ${facility.name}`);
 
   let row = 3;
@@ -105,6 +106,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ fac
   const summarySheet = workbook.addWorksheet("סיכום לפי תפקיד", {
     views: [{ rightToLeft: true, state: "frozen", ySplit: 3 }],
   });
+  setTabColor(summarySheet, TAB_COLORS.roleSummary);
   styleTitleRow(summarySheet, "I", `דוח שיבוץ צוות — ${facility.name}`);
 
   const summaryHeader = summarySheet.addRow([
@@ -157,6 +159,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ fac
   const detailSheet = workbook.addWorksheet("פירוט שכר ותעריפים", {
     views: [{ rightToLeft: true, state: "frozen", ySplit: 3 }],
   });
+  setTabColor(detailSheet, TAB_COLORS.payDetail);
   styleTitleRow(detailSheet, "H", `פירוט שכר ותעריפים — ${facility.name}`);
 
   const detailHeader = detailSheet.addRow([
