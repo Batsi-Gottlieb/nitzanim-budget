@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { getCurrentRevahaProfile } from "@/lib/revaha/auth";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { RevahaSidebar } from "@/components/RevahaSidebar";
 import { REVAHA_IMPERSONATOR_COOKIE, verifySignedAdminId } from "@/lib/revaha/impersonation";
 import { returnToRevahaAdmin } from "@/app/revaha/admin/organizations/actions";
@@ -62,7 +63,11 @@ export default async function RevahaLayout({ children }: { children: React.React
       resellerCompanyId = org?.reseller_company_id ?? null;
     }
     if (resellerCompanyId) {
-      const { data: company } = await supabase
+      // Read-only, safe-field lookup via the service-role client: reseller_companies_revaha's RLS is
+      // deliberately super-admin-only (it also holds billing_notes/billing_customer_ref/url_token), so a
+      // company_admin/staff/org_user can't read even their own row through the regular RLS-bound client.
+      const adminClient = createAdminClient();
+      const { data: company } = await adminClient
         .from("reseller_companies_revaha")
         .select("name, logo_url")
         .eq("id", resellerCompanyId)

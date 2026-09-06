@@ -48,6 +48,21 @@ function navItemsForRole(role: RevahaRole): NavItem[] {
         { href: "/revaha/admin/payments", title: "תשלומים", subtitle: "מעקב תשלומי חברות מערכת", icon: Wallet },
       ];
     case "company_admin":
+      return [
+        { href: "/revaha", title: "לוח בקרה", subtitle: "תמונת מצב הלקוחות שלכם", icon: LayoutDashboard },
+        {
+          href: "/revaha/admin/organizations",
+          title: "ניהול לקוחות ומשתמשים",
+          subtitle: "ארגונים מפעילים, חשבונות כניסה",
+          icon: Users,
+        },
+        {
+          href: "/revaha/admin/base-data",
+          title: "בסיס מידע ומודלי תקן",
+          subtitle: "תקני רווחה, תפקידים ושכר ייחוס",
+          icon: Database,
+        },
+      ];
     case "company_staff":
       return [
         { href: "/revaha", title: "לוח בקרה", subtitle: "תמונת מצב הלקוחות שלכם", icon: LayoutDashboard },

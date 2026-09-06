@@ -4,10 +4,12 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentRevahaProfile } from "@/lib/revaha/auth";
 
+/** Super-admin, or a reseller company's own admin (not company_staff — this affects the shared, global catalog). */
 async function requireRevahaAdmin() {
   const session = await getCurrentRevahaProfile();
-  if (session?.profile?.role !== "admin") {
-    throw new Error("פעולה זו זמינה למנהל מערכת בלבד");
+  const role = session?.profile?.role;
+  if (role !== "admin" && role !== "company_admin") {
+    throw new Error("פעולה זו זמינה למנהלי מערכת בלבד");
   }
 }
 
