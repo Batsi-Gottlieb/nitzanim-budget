@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { DailyShifts, ScheduleMethod, SCHEDULE_CHOICE_ROLES, WEEKDAY_LABELS } from "@/lib/revaha/types";
+import { DailyShifts, ScheduleMethod, SCHEDULE_CHOICE_ROLES, SCHEDULE_METHOD_LABELS, WEEKDAY_LABELS } from "@/lib/revaha/types";
 
 export function RoleScheduleFields({
   roleName,
@@ -33,14 +33,14 @@ export function RoleScheduleFields({
               onClick={() => setMethod("consolidated")}
               className={`px-2.5 py-1 transition-colors ${method === "consolidated" ? "bg-indigo-600 text-white" : "bg-white text-slate-600 hover:bg-slate-50"}`}
             >
-              מרוכזת
+              {SCHEDULE_METHOD_LABELS.consolidated}
             </button>
             <button
               type="button"
               onClick={() => setMethod("detailed")}
               className={`px-2.5 py-1 transition-colors ${method === "detailed" ? "bg-indigo-600 text-white" : "bg-white text-slate-600 hover:bg-slate-50"}`}
             >
-              מפורטת
+              {SCHEDULE_METHOD_LABELS.detailed}
             </button>
           </div>
           <input type="hidden" name={field("schedule_method")} value={method} />

@@ -1,0 +1,410 @@
+"use client";
+
+import { Fragment, useMemo, useState, useTransition } from "react";
+import { Trash2 } from "lucide-react";
+import { assignmentHourlyRate, monthlyHoursForAssignment } from "@/lib/revaha/calc";
+import { Facility, PayMode, ScheduleMethod, DailyShifts, SCHEDULE_METHOD_LABELS } from "@/lib/revaha/types";
+import {
+  deleteStaff,
+  deleteStaffRoleAssignment,
+  deleteStaffRoleAssignments,
+  updateStaff,
+  updateStaffRoleAssignment,
+} from "./actions";
+import { PayModeFields } from "./StaffSection";
+import { RoleScheduleFields } from "./RoleScheduleFields";
+
+type Staff = {
+  id: string;
+  full_name: string;
+  phone: string | null;
+  monthly_addition: number | null;
+  monthly_travel: number | null;
+  has_training_fund: boolean;
+  employment_type: "שכיר" | "עצמאי";
+};
+type Role = { id: string; name: string; role_type_id: string };
+type Assignment = {
+  id: string;
+  staff_id: string;
+  role_id: string;
+  pay_mode: PayMode;
+  hourly_rate: number | null;
+  monthly_salary: number | null;
+  monthly_hours: number | null;
+  schedule_method: ScheduleMethod;
+  weekday_hours: number | null;
+  weekend_hours: number | null;
+  daily_shifts: DailyShifts | null;
+};
+
+function fmtMoney(n: number) {
+  return n.toLocaleString("he-IL", { maximumFractionDigits: 0 });
+}
+function fmtHours(n: number) {
+  return n.toLocaleString("he-IL", { maximumFractionDigits: 1 });
+}
+
+function AssignmentEditForm({
+  assignment,
+  facilityId,
+  roleName,
+  onDone,
+}: {
+  assignment: Assignment;
+  facilityId: string;
+  roleName: string;
+  onDone: () => void;
+}) {
+  const [payMode, setPayMode] = useState<PayMode>(assignment.pay_mode);
+  const [isPending, startTransition] = useTransition();
+
+  function handleSave(formData: FormData) {
+    startTransition(async () => {
+      await updateStaffRoleAssignment(assignment.id, facilityId, formData);
+      onDone();
+    });
+  }
+
+  return (
+    <form action={handleSave} className="mt-2 space-y-2 rounded-lg border border-slate-200 bg-white p-3">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <div>
+          <label className="mb-1 block text-[11px] text-slate-500">אופן תשלום</label>
+          <select
+            name="pay_mode"
+            value={payMode}
+            onChange={(e) => setPayMode(e.target.value as PayMode)}
+            className="w-full rounded-lg border border-slate-200 px-2 py-1 text-sm"
+          >
+            <option value="hourly">שעתי</option>
+            <option value="monthly">חודשי</option>
+          </select>
+        </div>
+        <PayModeFields
+          payMode={payMode}
+          defaults={{
+            hourly_rate: assignment.hourly_rate,
+            monthly_salary: assignment.monthly_salary,
+            monthly_hours: assignment.monthly_hours,
+          }}
+        />
+      </div>
+      <RoleScheduleFields
+        roleName={roleName}
+        defaultMethod={assignment.schedule_method}
+        defaultWeekdayHours={assignment.weekday_hours}
+        defaultWeekendHours={assignment.weekend_hours}
+        defaultDailyShifts={assignment.daily_shifts}
+      />
+      <div className="flex gap-2">
+        <button
+          disabled={isPending}
+          className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white shadow-xs transition-all hover:bg-indigo-700 disabled:opacity-60"
+        >
+          {isPending ? "שומר..." : "שמירה"}
+        </button>
+        <button
+          type="button"
+          onClick={onDone}
+          className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+        >
+          ביטול
+        </button>
+      </div>
+    </form>
+  );
+}
+
+function StaffIdentityEditForm({
+  staff,
+  facilityId,
+  onDone,
+}: {
+  staff: Staff;
+  facilityId: string;
+  onDone: () => void;
+}) {
+  const [isPending, startTransition] = useTransition();
+
+  function handleSave(formData: FormData) {
+    startTransition(async () => {
+      await updateStaff(staff.id, facilityId, formData);
+      onDone();
+    });
+  }
+
+  return (
+    <form action={handleSave} className="mt-2 grid grid-cols-2 items-end gap-2 rounded-lg border border-slate-200 bg-white p-3 sm:grid-cols-6">
+      <div>
+        <label className="mb-1 block text-[11px] text-slate-500">שם</label>
+        <input name="full_name" defaultValue={staff.full_name} required className="w-full rounded-lg border border-slate-200 px-2 py-1 text-sm" />
+      </div>
+      <div>
+        <label className="mb-1 block text-[11px] text-slate-500">טלפון</label>
+        <input name="phone" defaultValue={staff.phone ?? ""} className="w-full rounded-lg border border-slate-200 px-2 py-1 text-sm" />
+      </div>
+      <div>
+        <label className="mb-1 block text-[11px] text-slate-500">תוספת חודשית</label>
+        <input name="monthly_addition" type="number" defaultValue={staff.monthly_addition ?? ""} className="w-full rounded-lg border border-slate-200 px-2 py-1 text-sm" />
+      </div>
+      <div>
+        <label className="mb-1 block text-[11px] text-slate-500">נסיעות חודשי</label>
+        <input name="monthly_travel" type="number" defaultValue={staff.monthly_travel ?? ""} className="w-full rounded-lg border border-slate-200 px-2 py-1 text-sm" />
+      </div>
+      <div>
+        <label className="mb-1 block text-[11px] text-slate-500">סוג העסקה</label>
+        <select name="employment_type" defaultValue={staff.employment_type} className="w-full rounded-lg border border-slate-200 px-2 py-1 text-sm">
+          <option value="שכיר">שכיר</option>
+          <option value="עצמאי">עצמאי</option>
+        </select>
+      </div>
+      <div className="flex items-center gap-1.5">
+        <input type="checkbox" id={`kh-${staff.id}`} name="has_training_fund" defaultChecked={staff.has_training_fund} className="h-4 w-4" />
+        <label htmlFor={`kh-${staff.id}`} className="text-[11px] text-slate-500">קרן השתלמות</label>
+      </div>
+      <div className="col-span-2 flex gap-2 sm:col-span-6">
+        <button disabled={isPending} className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white shadow-xs transition-all hover:bg-indigo-700 disabled:opacity-60">
+          {isPending ? "שומר..." : "שמירה"}
+        </button>
+        <button type="button" onClick={onDone} className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50">
+          ביטול
+        </button>
+      </div>
+    </form>
+  );
+}
+
+type Row =
+  | { kind: "assignment"; staff: Staff; assignment: Assignment; role: Role | undefined }
+  | { kind: "no-role"; staff: Staff };
+
+function rowKey(row: Row): string {
+  return row.kind === "assignment" ? `a:${row.assignment.id}` : `n:${row.staff.id}`;
+}
+
+export function StaffRoleTable({
+  facilityId,
+  facility,
+  staff,
+  assignments,
+  roles,
+}: {
+  facilityId: string;
+  facility: Facility;
+  staff: Staff[];
+  assignments: Assignment[];
+  roles: Role[];
+}) {
+  const [search, setSearch] = useState("");
+  const [roleFilter, setRoleFilter] = useState("");
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [editingKey, setEditingKey] = useState<string | null>(null);
+  const [identityEditId, setIdentityEditId] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
+
+  const rows: Row[] = useMemo(() => {
+    const result: Row[] = [];
+    for (const s of staff) {
+      const staffAssignments = assignments.filter((a) => a.staff_id === s.id);
+      if (staffAssignments.length === 0) {
+        result.push({ kind: "no-role", staff: s });
+      } else {
+        for (const a of staffAssignments) {
+          result.push({ kind: "assignment", staff: s, assignment: a, role: roles.find((r) => r.id === a.role_id) });
+        }
+      }
+    }
+    return result;
+  }, [staff, assignments, roles]);
+
+  const filteredRows = useMemo(() => {
+    const term = search.trim();
+    return rows.filter((row) => {
+      if (roleFilter && (row.kind !== "assignment" || row.assignment.role_id !== roleFilter)) return false;
+      if (!term) return true;
+      const haystack = `${row.staff.full_name} ${row.staff.phone ?? ""} ${row.kind === "assignment" ? row.role?.name ?? "" : ""}`;
+      return haystack.includes(term);
+    });
+  }, [rows, search, roleFilter]);
+
+  const selectableKeys = filteredRows.map(rowKey);
+  const allSelected = selectableKeys.length > 0 && selectableKeys.every((k) => selected.has(k));
+
+  function toggleAll() {
+    setSelected(allSelected ? new Set() : new Set(selectableKeys));
+  }
+  function toggleOne(key: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
+
+  function handleBulkDelete() {
+    const assignmentIds = filteredRows
+      .filter((r) => r.kind === "assignment" && selected.has(rowKey(r)))
+      .map((r) => (r as Extract<Row, { kind: "assignment" }>).assignment.id);
+    const staffIdsWithNoRole = filteredRows
+      .filter((r) => r.kind === "no-role" && selected.has(rowKey(r)))
+      .map((r) => r.staff.id);
+    if (!assignmentIds.length && !staffIdsWithNoRole.length) return;
+    startTransition(async () => {
+      await deleteStaffRoleAssignments(assignmentIds, staffIdsWithNoRole, facilityId);
+      setSelected(new Set());
+    });
+  }
+
+  return (
+    <div className="mt-3 space-y-2">
+      <div className="flex flex-wrap items-center gap-2">
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="חיפוש לפי שם או טלפון..."
+          className="w-52 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs"
+        />
+        <select
+          value={roleFilter}
+          onChange={(e) => setRoleFilter(e.target.value)}
+          className="rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs"
+        >
+          <option value="">כל התפקידים</option>
+          {roles.map((r) => (
+            <option key={r.id} value={r.id}>
+              {r.name}
+            </option>
+          ))}
+        </select>
+        {selected.size > 0 && (
+          <button
+            type="button"
+            disabled={isPending}
+            onClick={handleBulkDelete}
+            className="flex items-center gap-1.5 rounded-lg bg-danger px-3 py-1.5 text-xs font-semibold text-white shadow-xs transition-all hover:opacity-90 disabled:opacity-60"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+            מחיקת {selected.size} נבחרים
+          </button>
+        )}
+      </div>
+
+      <div className="overflow-x-auto rounded-xl border border-slate-200">
+        <table className="w-full text-sm">
+          <thead className="bg-slate-50 text-right text-xs text-slate-500">
+            <tr>
+              <th className="w-8 px-2 py-2">
+                <input type="checkbox" checked={allSelected} onChange={toggleAll} className="h-4 w-4" />
+              </th>
+              <th className="px-2 py-2">שם</th>
+              <th className="px-2 py-2">טלפון</th>
+              <th className="px-2 py-2">תפקיד</th>
+              <th className="px-2 py-2">שיטת שיבוץ</th>
+              <th className="px-2 py-2">שעות חודשיות</th>
+              <th className="px-2 py-2">שכר חודשי</th>
+              <th className="px-2 py-2">פעולות</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {filteredRows.map((row) => {
+              const key = rowKey(row);
+              const isEditing = editingKey === key;
+              const isIdentityEditing = identityEditId === row.staff.id;
+              return (
+                <Fragment key={key}>
+                  <tr className="text-slate-900">
+                    <td className="px-2 py-2 align-top">
+                      <input type="checkbox" checked={selected.has(key)} onChange={() => toggleOne(key)} className="h-4 w-4" />
+                    </td>
+                    <td className="px-2 py-2 align-top font-medium">{row.staff.full_name}</td>
+                    <td className="px-2 py-2 align-top text-slate-500">{row.staff.phone ?? "—"}</td>
+                    <td className="px-2 py-2 align-top">
+                      {row.kind === "assignment" ? row.role?.name ?? "?" : <span className="text-slate-400">— ללא תפקיד —</span>}
+                    </td>
+                    <td className="px-2 py-2 align-top text-slate-500">
+                      {row.kind === "assignment" ? SCHEDULE_METHOD_LABELS[row.assignment.schedule_method] : "—"}
+                    </td>
+                    <td className="px-2 py-2 align-top text-slate-500">
+                      {row.kind === "assignment" ? fmtHours(monthlyHoursForAssignment(row.assignment, facility)) : "—"}
+                    </td>
+                    <td className="px-2 py-2 align-top text-slate-500">
+                      {row.kind === "assignment"
+                        ? `₪${fmtMoney(monthlyHoursForAssignment(row.assignment, facility) * assignmentHourlyRate(row.assignment))}`
+                        : "—"}
+                    </td>
+                    <td className="px-2 py-2 align-top">
+                      <div className="flex flex-wrap gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => setIdentityEditId(isIdentityEditing ? null : row.staff.id)}
+                          className="rounded-lg border border-slate-200 px-2 py-1 text-[11px] font-semibold text-slate-600 hover:bg-slate-50"
+                        >
+                          פרטי עובד
+                        </button>
+                        {row.kind === "assignment" && (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => setEditingKey(isEditing ? null : key)}
+                              className="rounded-lg border border-slate-200 px-2 py-1 text-[11px] font-semibold text-indigo-600 hover:bg-slate-50"
+                            >
+                              עריכה
+                            </button>
+                            <button
+                              type="button"
+                              disabled={isPending}
+                              onClick={() => startTransition(() => deleteStaffRoleAssignment(row.assignment.id, facilityId))}
+                              className="rounded-lg border border-slate-200 px-2 py-1 text-[11px] font-semibold text-danger hover:bg-slate-50 disabled:opacity-60"
+                            >
+                              הסרת תפקיד
+                            </button>
+                          </>
+                        )}
+                        <button
+                          type="button"
+                          disabled={isPending}
+                          onClick={() => startTransition(() => deleteStaff(row.staff.id, facilityId))}
+                          className="rounded-lg border border-slate-200 px-2 py-1 text-[11px] font-semibold text-danger hover:bg-slate-50 disabled:opacity-60"
+                        >
+                          מחיקת עובד
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                  {isIdentityEditing && (
+                    <tr key={`${key}-identity`}>
+                      <td colSpan={8} className="bg-slate-50/60 px-2 pb-3">
+                        <StaffIdentityEditForm staff={row.staff} facilityId={facilityId} onDone={() => setIdentityEditId(null)} />
+                      </td>
+                    </tr>
+                  )}
+                  {isEditing && row.kind === "assignment" && (
+                    <tr key={`${key}-edit`}>
+                      <td colSpan={8} className="bg-slate-50/60 px-2 pb-3">
+                        <AssignmentEditForm
+                          assignment={row.assignment}
+                          facilityId={facilityId}
+                          roleName={row.role?.name ?? ""}
+                          onDone={() => setEditingKey(null)}
+                        />
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
+              );
+            })}
+            {filteredRows.length === 0 && (
+              <tr>
+                <td colSpan={8} className="px-2 py-4 text-center text-sm text-slate-500">
+                  לא נמצאו עובדים תואמים
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}

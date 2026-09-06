@@ -10,6 +10,7 @@ type Facility = {
   facility_model_id: string | null;
   occupancy_actual: number | null;
   occupancy_tender: number | null;
+  weekend_days_per_month: number | null;
 };
 
 export function FacilityDetailForm({ facility, models }: { facility: Facility; models: FacilityModel[] }) {
@@ -67,6 +68,16 @@ export function FacilityDetailForm({ facility, models }: { facility: Facility; m
             name="occupancy_tender"
             type="number"
             defaultValue={facility.occupancy_tender ?? ""}
+            className="w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm"
+          />
+        </div>
+        <div>
+          <label className="mb-1 block text-xs font-medium text-slate-500">ממוצע ימי שישי-שבת בחודש</label>
+          <input
+            name="weekend_days_per_month"
+            type="number"
+            step="0.1"
+            defaultValue={facility.weekend_days_per_month ?? ""}
             className="w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm"
           />
         </div>

@@ -6,8 +6,8 @@ import { computeFacilityBudget } from "@/lib/revaha/calc";
 import { KpiCard } from "@/components/revaha/KpiCard";
 import { FacilityDetailForm } from "./FacilityDetailForm";
 import { StaffSection } from "./StaffSection";
-import { RoleAssignmentsSection } from "./RoleAssignmentsSection";
 import { ExpensesSection } from "./ExpensesSection";
+import { ReportsSection } from "./ReportsSection";
 
 function fmt(n: number) {
   return n.toLocaleString("he-IL", { maximumFractionDigits: 0 });
@@ -17,26 +17,27 @@ export default async function RevahaFacilityDetailPage({ params }: { params: Pro
   const { facilityId } = await params;
   const supabase = await createClient();
 
-  const [{ data: facility }, { data: models }, { data: staff }, { data: roleTypes }, { data: roles }, { data: roleTypeRates }, { data: assignments }, { data: expenses }] =
+  const [{ data: facility }, { data: models }, { data: staff }, { data: roleTypes }, { data: roles }, { data: assignments }, { data: expenses }, { data: facilityModelRoles }] =
     await Promise.all([
       supabase.from("facilities_revaha").select("*").eq("id", facilityId).maybeSingle(),
       supabase.from("facility_models_revaha").select("id, name").order("name"),
       supabase.from("staff_revaha").select("*").eq("facility_id", facilityId).order("full_name"),
       supabase.from("role_types_revaha").select("*").order("name"),
       supabase.from("roles_revaha").select("*").order("name"),
-      supabase.from("staff_role_type_rates_revaha").select("*"),
       supabase.from("staff_role_assignments_revaha").select("*, staff_revaha!inner(facility_id)").eq("staff_revaha.facility_id", facilityId),
       supabase.from("facility_expense_line_items_revaha").select("*").eq("facility_id", facilityId).order("category"),
+      supabase.from("facility_model_roles_revaha").select("*"),
     ]);
 
   if (!facility) notFound();
 
   const staffList = staff ?? [];
-  const staffIds = new Set(staffList.map((s) => s.id));
-  const roleTypeRatesForStaff = (roleTypeRates ?? []).filter((r) => staffIds.has(r.staff_id));
   const assignmentList = assignments ?? [];
+  const facilityModelRolesForFacility = (facilityModelRoles ?? []).filter(
+    (fmr) => fmr.facility_model_id === facility.facility_model_id
+  );
 
-  const budget = computeFacilityBudget(assignmentList, staffList, roles ?? [], roleTypeRates ?? [], expenses ?? []);
+  const budget = computeFacilityBudget(assignmentList, staffList, facility, expenses ?? []);
 
   return (
     <div className="space-y-6">
@@ -57,13 +58,19 @@ export default async function RevahaFacilityDetailPage({ params }: { params: Pro
       <FacilityDetailForm facility={facility} models={models ?? []} />
       <StaffSection
         facilityId={facilityId}
+        facility={facility}
         staff={staffList}
-        roleTypes={roleTypes ?? []}
-        roleTypeRates={roleTypeRatesForStaff}
+        assignments={assignmentList}
         roles={roles ?? []}
       />
-      <RoleAssignmentsSection facilityId={facilityId} staff={staffList} roles={roles ?? []} assignments={assignmentList} />
       <ExpensesSection facilityId={facilityId} items={expenses ?? []} />
+      <ReportsSection
+        facility={facility}
+        facilityModelRoles={facilityModelRolesForFacility}
+        roles={roles ?? []}
+        roleTypes={roleTypes ?? []}
+        assignments={assignmentList}
+      />
     </div>
   );
 }

@@ -95,6 +95,7 @@ export type Facility = {
   facility_model_id: string | null;
   occupancy_actual: number | null;
   occupancy_tender: number | null;
+  weekend_days_per_month: number | null;
 };
 
 export type PayMode = "hourly" | "monthly";
@@ -104,27 +105,22 @@ export type Staff = {
   id: string;
   facility_id: string;
   full_name: string;
-  pay_mode: PayMode;
-  hourly_rate: number | null;
-  monthly_salary: number | null;
-  monthly_hours: number | null;
+  phone: string | null;
   monthly_addition: number | null;
   monthly_travel: number | null;
   has_training_fund: boolean;
   employment_type: EmploymentType;
 };
 
-export type StaffRoleTypeRate = {
-  id: string;
-  staff_id: string;
-  role_type_id: string;
-  hourly_rate: number | null;
-};
-
 export type ScheduleMethod = "detailed" | "consolidated";
 export const WEEKDAY_LABELS = ["יום א׳", "יום ב׳", "יום ג׳", "יום ד׳", "יום ה׳", "יום ו׳", "שבת"] as const;
 /** Roles allowed to choose between detailed (day-by-day) and consolidated scheduling. All other roles use consolidated only. */
 export const SCHEDULE_CHOICE_ROLES = ["מדריכים", "אם בית"];
+/** User-facing phrasing for the two scheduling methods, used consistently across the UI, the bulk-import template, and the parser. */
+export const SCHEDULE_METHOD_LABELS: Record<ScheduleMethod, string> = {
+  detailed: "א-ש (שכר קבוע)",
+  consolidated: "א-ה בנפרד ושישי שבת בנפרד",
+};
 
 export type DayShift = { start: string; end: string };
 /** Keyed by weekday index as a string: "0" = Sunday ... "6" = Saturday. */
@@ -134,6 +130,10 @@ export type StaffRoleAssignment = {
   id: string;
   staff_id: string;
   role_id: string;
+  pay_mode: PayMode;
+  hourly_rate: number | null;
+  monthly_salary: number | null;
+  monthly_hours: number | null;
   schedule_method: ScheduleMethod;
   weekday_hours: number | null;
   weekend_hours: number | null;

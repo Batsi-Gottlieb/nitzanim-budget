@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from "react";
 import { Plus, X } from "lucide-react";
+import { PayMode } from "@/lib/revaha/types";
 import { createStaffWithAssignments } from "./actions";
 import { PayModeFields } from "./StaffSection";
 import { RoleScheduleFields } from "./RoleScheduleFields";
@@ -10,6 +11,7 @@ type Role = { id: string; name: string };
 
 function StaffRoleBlock({ roleKey, roles, onRemove }: { roleKey: number; roles: Role[]; onRemove: () => void }) {
   const [roleId, setRoleId] = useState("");
+  const [payMode, setPayMode] = useState<PayMode>("hourly");
   const roleName = roles.find((r) => r.id === roleId)?.name ?? "";
   const prefix = `role_${roleKey}_`;
 
@@ -39,13 +41,31 @@ function StaffRoleBlock({ roleKey, roles, onRemove }: { roleKey: number; roles: 
           <X className="h-3.5 w-3.5" />
         </button>
       </div>
-      {roleId && <RoleScheduleFields roleName={roleName} namePrefix={prefix} />}
+      {roleId && (
+        <>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <div>
+              <label className="mb-1 block text-[11px] text-slate-500">אופן תשלום לתפקיד</label>
+              <select
+                name={`${prefix}pay_mode`}
+                value={payMode}
+                onChange={(e) => setPayMode(e.target.value as PayMode)}
+                className="w-full rounded-lg border border-slate-200 px-2 py-1 text-sm"
+              >
+                <option value="hourly">שעתי</option>
+                <option value="monthly">חודשי</option>
+              </select>
+            </div>
+            <PayModeFields payMode={payMode} namePrefix={prefix} />
+          </div>
+          <RoleScheduleFields roleName={roleName} namePrefix={prefix} />
+        </>
+      )}
     </div>
   );
 }
 
 export function AddStaffModal({ facilityId, roles, onClose }: { facilityId: string; roles: Role[]; onClose: () => void }) {
-  const [payMode, setPayMode] = useState<"hourly" | "monthly">("hourly");
   const [roleKeys, setRoleKeys] = useState<number[]>([0]);
   const [nextKey, setNextKey] = useState(1);
 
@@ -78,19 +98,10 @@ export function AddStaffModal({ facilityId, roles, onClose }: { facilityId: stri
               <label className="mb-1 block text-xs font-medium text-slate-500">שם העובד</label>
               <input name="full_name" required className="w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm" />
             </div>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-slate-500">אופן תשלום</label>
-              <select
-                name="pay_mode"
-                value={payMode}
-                onChange={(e) => setPayMode(e.target.value as "hourly" | "monthly")}
-                className="w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm"
-              >
-                <option value="hourly">שעתי</option>
-                <option value="monthly">חודשי</option>
-              </select>
+            <div className="col-span-2">
+              <label className="mb-1 block text-xs font-medium text-slate-500">טלפון</label>
+              <input name="phone" className="w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm" />
             </div>
-            <PayModeFields payMode={payMode} />
             <div>
               <label className="mb-1 block text-xs font-medium text-slate-500">תוספת חודשית</label>
               <input name="monthly_addition" type="number" className="w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm" />
@@ -116,7 +127,7 @@ export function AddStaffModal({ facilityId, roles, onClose }: { facilityId: stri
 
           <div className="border-t border-slate-200 pt-4">
             <div className="mb-2 flex items-center justify-between">
-              <h3 className="text-xs font-bold text-slate-900">תפקידים ושיבוץ</h3>
+              <h3 className="text-xs font-bold text-slate-900">תפקידים, שכר ושיבוץ</h3>
               <button
                 type="button"
                 onClick={() => {

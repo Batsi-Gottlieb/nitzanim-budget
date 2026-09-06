@@ -44,6 +44,15 @@ export function CreateFacilityForm({ models }: { models: FacilityModel[] }) {
           <label className="mb-1 block text-xs font-medium text-slate-500">מושמים מכרז</label>
           <input name="occupancy_tender" type="number" className="w-32 rounded-lg border border-slate-200 px-2 py-1.5 text-sm" />
         </div>
+        <div>
+          <label className="mb-1 block text-xs font-medium text-slate-500">ממוצע ימי שישי-שבת בחודש</label>
+          <input
+            name="weekend_days_per_month"
+            type="number"
+            step="0.1"
+            className="w-40 rounded-lg border border-slate-200 px-2 py-1.5 text-sm"
+          />
+        </div>
         <button
           disabled={isPending}
           className="rounded-xl bg-indigo-600 px-4 py-2 text-xs font-semibold text-white shadow-xs transition-all hover:bg-indigo-700 disabled:opacity-60"

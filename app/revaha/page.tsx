@@ -18,15 +18,13 @@ export default async function RevahaDashboardPage() {
   const greetingName = session?.profile?.full_name ? `, ${session.profile.full_name}` : "";
 
   if (isAdmin || isCompanyRole) {
-    const [{ count: orgCount }, { data: facilities }, { data: staff }, { data: assignments }, { data: roleTypeRates }, { data: expenses }, { data: roles }] =
+    const [{ count: orgCount }, { data: facilities }, { data: staff }, { data: assignments }, { data: expenses }] =
       await Promise.all([
         supabase.from("organizations_revaha").select("*", { count: "exact", head: true }),
         supabase.from("facilities_revaha").select("*"),
         supabase.from("staff_revaha").select("*"),
         supabase.from("staff_role_assignments_revaha").select("*"),
-        supabase.from("staff_role_type_rates_revaha").select("*"),
         supabase.from("facility_expense_line_items_revaha").select("*"),
-        supabase.from("roles_revaha").select("*"),
       ]);
 
     const summaries = (facilities ?? []).map((f) => {
@@ -34,7 +32,7 @@ export default async function RevahaDashboardPage() {
       const fStaffIds = new Set(fStaff.map((s) => s.id));
       const fAssignments = (assignments ?? []).filter((a) => fStaffIds.has(a.staff_id));
       const fExpenses = (expenses ?? []).filter((e) => e.facility_id === f.id);
-      return computeFacilityBudget(fAssignments, fStaff, roles ?? [], roleTypeRates ?? [], fExpenses);
+      return computeFacilityBudget(fAssignments, fStaff, f, fExpenses);
     });
     const total = addFacilityBudgets(summaries);
 
@@ -81,7 +79,7 @@ export default async function RevahaDashboardPage() {
 
   const facilityIds = (facilities ?? []).map((f) => f.id);
 
-  const [{ data: staff }, { data: assignments }, { data: roleTypeRates }, { data: expenses }, { data: roles }] =
+  const [{ data: staff }, { data: assignments }, { data: expenses }] =
     await Promise.all([
       facilityIds.length
         ? supabase.from("staff_revaha").select("*").in("facility_id", facilityIds)
@@ -92,11 +90,9 @@ export default async function RevahaDashboardPage() {
             .select("*, staff_revaha!inner(facility_id)")
             .in("staff_revaha.facility_id", facilityIds)
         : Promise.resolve({ data: [] }),
-      supabase.from("staff_role_type_rates_revaha").select("*"),
       facilityIds.length
         ? supabase.from("facility_expense_line_items_revaha").select("*").in("facility_id", facilityIds)
         : Promise.resolve({ data: [] }),
-      supabase.from("roles_revaha").select("*"),
     ]);
 
   const summaries = (facilities ?? []).map((f) => {
@@ -106,7 +102,7 @@ export default async function RevahaDashboardPage() {
     const fExpenses = (expenses ?? []).filter((e) => e.facility_id === f.id);
     return {
       facility: f,
-      summary: computeFacilityBudget(fAssignments, fStaff, roles ?? [], roleTypeRates ?? [], fExpenses),
+      summary: computeFacilityBudget(fAssignments, fStaff, f, fExpenses),
     };
   });
 
