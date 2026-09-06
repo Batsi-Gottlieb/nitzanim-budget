@@ -1,10 +1,11 @@
 "use client";
 
-import { Fragment, useMemo, useState, useTransition } from "react";
+import { Fragment, useMemo, useState, useTransition, type MouseEvent } from "react";
 import { Trash2 } from "lucide-react";
 import { assignmentHourlyRate, monthlyHoursForAssignment } from "@/lib/revaha/calc";
 import { Facility, PayMode, ScheduleMethod, DailyShifts, SCHEDULE_METHOD_LABELS } from "@/lib/revaha/types";
 import {
+  createStaffRoleAssignment,
   deleteStaff,
   deleteStaffRoleAssignment,
   deleteStaffRoleAssignments,
@@ -116,6 +117,88 @@ function AssignmentEditForm({
   );
 }
 
+function AddRoleForm({
+  staffId,
+  availableRoles,
+  facilityId,
+  onDone,
+}: {
+  staffId: string;
+  availableRoles: Role[];
+  facilityId: string;
+  onDone: () => void;
+}) {
+  const [roleId, setRoleId] = useState("");
+  const [payMode, setPayMode] = useState<PayMode>("hourly");
+  const [isPending, startTransition] = useTransition();
+  const roleName = availableRoles.find((r) => r.id === roleId)?.name ?? "";
+
+  function handleSave(formData: FormData) {
+    startTransition(async () => {
+      const result = await createStaffRoleAssignment(facilityId, formData);
+      if (!result.error) onDone();
+    });
+  }
+
+  return (
+    <form action={handleSave} className="mt-2 space-y-2 rounded-lg border border-slate-200 bg-white p-3">
+      <input type="hidden" name="staff_id" value={staffId} />
+      <div>
+        <label className="mb-1 block text-[11px] text-slate-500">תפקיד</label>
+        <select
+          name="role_id"
+          required
+          value={roleId}
+          onChange={(e) => setRoleId(e.target.value)}
+          className="w-52 rounded-lg border border-slate-200 px-2 py-1.5 text-sm"
+        >
+          <option value="">בחירת תפקיד...</option>
+          {availableRoles.map((r) => (
+            <option key={r.id} value={r.id}>
+              {r.name}
+            </option>
+          ))}
+        </select>
+      </div>
+      {roleId && (
+        <>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <div>
+              <label className="mb-1 block text-[11px] text-slate-500">אופן תשלום</label>
+              <select
+                name="pay_mode"
+                value={payMode}
+                onChange={(e) => setPayMode(e.target.value as PayMode)}
+                className="w-full rounded-lg border border-slate-200 px-2 py-1 text-sm"
+              >
+                <option value="hourly">שעתי</option>
+                <option value="monthly">חודשי</option>
+              </select>
+            </div>
+            <PayModeFields payMode={payMode} />
+          </div>
+          <RoleScheduleFields roleName={roleName} />
+        </>
+      )}
+      <div className="flex gap-2">
+        <button
+          disabled={isPending || !roleId}
+          className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white shadow-xs transition-all hover:bg-indigo-700 disabled:opacity-60"
+        >
+          {isPending ? "מוסיף..." : "הוספת תפקיד"}
+        </button>
+        <button
+          type="button"
+          onClick={onDone}
+          className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+        >
+          ביטול
+        </button>
+      </div>
+    </form>
+  );
+}
+
 function StaffIdentityEditForm({
   staff,
   facilityId,
@@ -201,6 +284,7 @@ export function StaffRoleTable({
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [editingKey, setEditingKey] = useState<string | null>(null);
   const [identityEditId, setIdentityEditId] = useState<string | null>(null);
+  const [addRoleForStaffId, setAddRoleForStaffId] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
   const rows: Row[] = useMemo(() => {
@@ -227,6 +311,12 @@ export function StaffRoleTable({
       return haystack.includes(term);
     });
   }, [rows, search, roleFilter]);
+
+  const lastRowIndexByStaffId = useMemo(() => {
+    const map = new Map<string, number>();
+    filteredRows.forEach((r, i) => map.set(r.staff.id, i));
+    return map;
+  }, [filteredRows]);
 
   const selectableKeys = filteredRows.map(rowKey);
   const allSelected = selectableKeys.length > 0 && selectableKeys.every((k) => selected.has(k));
@@ -308,13 +398,26 @@ export function StaffRoleTable({
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {filteredRows.map((row) => {
+            {filteredRows.map((row, index) => {
               const key = rowKey(row);
               const isEditing = editingKey === key;
-              const isIdentityEditing = identityEditId === row.staff.id;
+              const isLastRowForStaff = lastRowIndexByStaffId.get(row.staff.id) === index;
+              const isIdentityEditing = isLastRowForStaff && identityEditId === row.staff.id;
+              const isAddingRole = isLastRowForStaff && addRoleForStaffId === row.staff.id;
+              const assignedRoleIds = new Set(
+                assignments.filter((a) => a.staff_id === row.staff.id).map((a) => a.role_id)
+              );
+              const availableRoles = roles.filter((r) => !assignedRoleIds.has(r.id));
+
+              function handleRowClick(e: MouseEvent<HTMLTableRowElement>) {
+                if ((e.target as HTMLElement).closest("button, input, a, select")) return;
+                if (row.kind === "assignment") setEditingKey(isEditing ? null : key);
+                else setAddRoleForStaffId(isAddingRole ? null : row.staff.id);
+              }
+
               return (
                 <Fragment key={key}>
-                  <tr className="text-slate-900">
+                  <tr className="cursor-pointer text-slate-900 hover:bg-slate-50/60" onClick={handleRowClick}>
                     <td className="px-2 py-2 align-top">
                       <input type="checkbox" checked={selected.has(key)} onChange={() => toggleOne(key)} className="h-4 w-4" />
                     </td>
@@ -364,6 +467,13 @@ export function StaffRoleTable({
                         )}
                         <button
                           type="button"
+                          onClick={() => setAddRoleForStaffId(isAddingRole ? null : row.staff.id)}
+                          className="rounded-lg border border-slate-200 px-2 py-1 text-[11px] font-semibold text-indigo-600 hover:bg-slate-50"
+                        >
+                          הוספת תפקיד
+                        </button>
+                        <button
+                          type="button"
                           disabled={isPending}
                           onClick={() => startTransition(() => deleteStaff(row.staff.id, facilityId))}
                           className="rounded-lg border border-slate-200 px-2 py-1 text-[11px] font-semibold text-danger hover:bg-slate-50 disabled:opacity-60"
@@ -388,6 +498,18 @@ export function StaffRoleTable({
                           facilityId={facilityId}
                           roleName={row.role?.name ?? ""}
                           onDone={() => setEditingKey(null)}
+                        />
+                      </td>
+                    </tr>
+                  )}
+                  {isAddingRole && (
+                    <tr key={`${key}-add-role`}>
+                      <td colSpan={8} className="bg-slate-50/60 px-2 pb-3">
+                        <AddRoleForm
+                          staffId={row.staff.id}
+                          availableRoles={availableRoles}
+                          facilityId={facilityId}
+                          onDone={() => setAddRoleForStaffId(null)}
                         />
                       </td>
                     </tr>
