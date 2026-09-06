@@ -11,6 +11,17 @@ async function requireRevahaAdmin() {
   if (role !== "admin" && role !== "company_admin") {
     throw new Error("פעולה זו זמינה למנהלי מערכת בלבד");
   }
+  return session!;
+}
+
+/**
+ * New base-data rows created by super-admin go into the shared global catalog (reseller_company_id
+ * null, visible to everyone). Rows created by a company_admin are scoped to their own company only —
+ * they can freely add/edit their own additions without ever affecting the global baseline or any
+ * other company's view.
+ */
+function resellerScopeForInsert(session: NonNullable<Awaited<ReturnType<typeof getCurrentRevahaProfile>>>) {
+  return session.profile?.role === "company_admin" ? session.profile.reseller_company_id : null;
 }
 
 function num(formData: FormData, key: string): number | null {
@@ -21,30 +32,34 @@ function num(formData: FormData, key: string): number | null {
 }
 
 export async function createRoleType(formData: FormData) {
-  await requireRevahaAdmin();
+  const session = await requireRevahaAdmin();
   const name = (formData.get("name") as string)?.trim();
   if (!name) return { error: "יש להזין שם" };
   const supabase = await createClient();
-  const { error } = await supabase.from("role_types_revaha").insert({ name });
+  const { error } = await supabase
+    .from("role_types_revaha")
+    .insert({ name, reseller_company_id: resellerScopeForInsert(session) });
   if (error) return { error: error.message };
   revalidatePath("/revaha/admin/base-data");
   return { error: null };
 }
 
 export async function createRole(formData: FormData) {
-  await requireRevahaAdmin();
+  const session = await requireRevahaAdmin();
   const name = (formData.get("name") as string)?.trim();
   const role_type_id = formData.get("role_type_id") as string;
   if (!name || !role_type_id) return { error: "יש להזין שם ולבחור סוג תפקיד" };
   const supabase = await createClient();
-  const { error } = await supabase.from("roles_revaha").insert({ name, role_type_id });
+  const { error } = await supabase
+    .from("roles_revaha")
+    .insert({ name, role_type_id, reseller_company_id: resellerScopeForInsert(session) });
   if (error) return { error: error.message };
   revalidatePath("/revaha/admin/base-data");
   return { error: null };
 }
 
 export async function createIncomeRateCategory(formData: FormData) {
-  await requireRevahaAdmin();
+  const session = await requireRevahaAdmin();
   const name = (formData.get("name") as string)?.trim();
   const rate_group = formData.get("rate_group") as string;
   const monthly_amount = num(formData, "monthly_amount") ?? 0;
@@ -52,7 +67,9 @@ export async function createIncomeRateCategory(formData: FormData) {
     return { error: "יש להזין שם ולבחור סוג תעריף" };
   }
   const supabase = await createClient();
-  const { error } = await supabase.from("income_rate_categories_revaha").insert({ name, rate_group, monthly_amount });
+  const { error } = await supabase
+    .from("income_rate_categories_revaha")
+    .insert({ name, rate_group, monthly_amount, reseller_company_id: resellerScopeForInsert(session) });
   if (error) return { error: error.message };
   revalidatePath("/revaha/admin/base-data");
   return { error: null };
@@ -67,11 +84,15 @@ export async function updateIncomeRateCategoryAmount(id: string, formData: FormD
 }
 
 export async function createFacilityModel(formData: FormData) {
-  await requireRevahaAdmin();
+  const session = await requireRevahaAdmin();
   const name = (formData.get("name") as string)?.trim();
   if (!name) return { error: "יש להזין שם מודל" };
   const supabase = await createClient();
-  const { data, error } = await supabase.from("facility_models_revaha").insert({ name }).select().single();
+  const { data, error } = await supabase
+    .from("facility_models_revaha")
+    .insert({ name, reseller_company_id: resellerScopeForInsert(session) })
+    .select()
+    .single();
   if (error) return { error: error.message };
   revalidatePath("/revaha/admin/base-data/models");
   return { error: null, id: data.id as string };

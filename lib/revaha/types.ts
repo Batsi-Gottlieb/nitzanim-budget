@@ -43,12 +43,14 @@ export type Payment = {
 export type RoleType = {
   id: string;
   name: string;
+  reseller_company_id: string | null;
 };
 
 export type Role = {
   id: string;
   name: string;
   role_type_id: string;
+  reseller_company_id: string | null;
 };
 
 export type IncomeRateGroup = "participant" | "rent_reimbursement";
@@ -58,6 +60,7 @@ export type IncomeRateCategory = {
   rate_group: IncomeRateGroup;
   name: string;
   monthly_amount: number;
+  reseller_company_id: string | null;
 };
 
 export type FacilityModel = {
@@ -68,6 +71,7 @@ export type FacilityModel = {
   security_participation_monthly: number | null;
   bat_sherut_full_rate: number | null;
   bat_sherut_bat_ami_rate: number | null;
+  reseller_company_id: string | null;
 };
 
 export type FacilityModelRole = {
@@ -81,6 +85,7 @@ export type FacilityModelRole = {
   max_percent: number | null;
   affected_by_occupancy: boolean;
   notes: string | null;
+  reseller_company_id: string | null;
 };
 
 export type Facility = {
