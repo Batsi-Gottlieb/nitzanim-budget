@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { getCurrentProfile } from "@/lib/auth";
-import { Sidebar } from "@/components/Sidebar";
+import { SidebarGate } from "@/components/SidebarGate";
 import { IMPERSONATOR_COOKIE, verifySignedAdminId } from "@/lib/impersonation";
 import { returnToAdmin } from "@/app/(app)/admin/clients/actions";
 import { getCurrentRevahaProfile } from "@/lib/revaha/auth";
@@ -11,11 +11,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   if (!session) redirect("/login");
 
   const { profile } = session;
+  const isAdmin = profile?.role === "admin";
+  const revahaSession = !profile || isAdmin ? await getCurrentRevahaProfile() : null;
   if (!profile) {
-    const revahaSession = await getCurrentRevahaProfile();
     if (revahaSession?.profile) redirect("/revaha");
   }
-  const isAdmin = profile?.role === "admin";
+  const isPickerEligible = isAdmin && !!revahaSession?.profile;
 
   const cookieStore = await cookies();
   const isImpersonating = !!verifySignedAdminId(cookieStore.get(IMPERSONATOR_COOKIE)?.value);
@@ -31,7 +32,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         </form>
       )}
       <div className="flex flex-1">
-        <Sidebar isAdmin={isAdmin} fullName={profile?.full_name ?? null} />
+        <SidebarGate isAdmin={isAdmin} fullName={profile?.full_name ?? null} isPickerEligible={isPickerEligible} />
         <main className="flex-1 overflow-y-auto p-8">{children}</main>
       </div>
     </div>
