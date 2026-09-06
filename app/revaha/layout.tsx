@@ -13,6 +13,7 @@ export default async function RevahaLayout({ children }: { children: React.React
 
   const { profile } = session;
   const isAdmin = profile.role === "admin";
+  const isCompanyRole = profile.role === "company_admin" || profile.role === "company_staff";
   const supabase = await createClient();
 
   const cookieStore = await cookies();
@@ -20,6 +21,15 @@ export default async function RevahaLayout({ children }: { children: React.React
 
   let stats: { label: string; value: number; accent?: boolean }[];
   if (isAdmin) {
+    const [{ count: orgCount }, { count: facilityCount }] = await Promise.all([
+      supabase.from("organizations_revaha").select("*", { count: "exact", head: true }),
+      supabase.from("facilities_revaha").select("*", { count: "exact", head: true }),
+    ]);
+    stats = [
+      { label: "לקוחות", value: orgCount ?? 0 },
+      { label: "פנימיות", value: facilityCount ?? 0, accent: true },
+    ];
+  } else if (isCompanyRole) {
     const [{ count: orgCount }, { count: facilityCount }] = await Promise.all([
       supabase.from("organizations_revaha").select("*", { count: "exact", head: true }),
       supabase.from("facilities_revaha").select("*", { count: "exact", head: true }),
@@ -38,6 +48,30 @@ export default async function RevahaLayout({ children }: { children: React.React
     stats = [{ label: "פנימיות", value: facilityCount ?? 0, accent: true }];
   }
 
+  // Branding: super-admin gets the default revaha brand; everyone else inherits their reseller company's logo/name.
+  let companyName: string | null = null;
+  let companyLogoUrl: string | null = null;
+  if (!isAdmin) {
+    let resellerCompanyId = profile.reseller_company_id;
+    if (!resellerCompanyId && profile.organization_id) {
+      const { data: org } = await supabase
+        .from("organizations_revaha")
+        .select("reseller_company_id")
+        .eq("id", profile.organization_id)
+        .maybeSingle();
+      resellerCompanyId = org?.reseller_company_id ?? null;
+    }
+    if (resellerCompanyId) {
+      const { data: company } = await supabase
+        .from("reseller_companies_revaha")
+        .select("name, logo_url")
+        .eq("id", resellerCompanyId)
+        .maybeSingle();
+      companyName = company?.name ?? null;
+      companyLogoUrl = company?.logo_url ?? null;
+    }
+  }
+
   return (
     <div className="flex min-h-screen flex-col bg-[var(--background)] text-slate-900">
       {isImpersonating && (
@@ -49,7 +83,13 @@ export default async function RevahaLayout({ children }: { children: React.React
         </form>
       )}
       <div className="flex flex-1">
-        <RevahaSidebar isAdmin={isAdmin} fullName={profile.full_name} stats={stats} />
+        <RevahaSidebar
+          role={profile.role}
+          fullName={profile.full_name}
+          stats={stats}
+          companyName={companyName}
+          companyLogoUrl={companyLogoUrl}
+        />
         <div className="flex min-h-screen flex-1 flex-col">
           <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6 lg:px-8">{children}</main>
         </div>

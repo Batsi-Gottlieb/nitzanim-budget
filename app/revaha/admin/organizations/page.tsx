@@ -1,11 +1,17 @@
 import { Building2, ShieldCheck, UserCog, Users2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentRevahaProfile } from "@/lib/revaha/auth";
 import { CreateOrganizationForm } from "./CreateOrganizationForm";
 import { OrganizationRow } from "./OrganizationRow";
 
 export default async function RevahaOrganizationsPage() {
+  const session = await getCurrentRevahaProfile();
+  const isSuperAdmin = session?.profile?.role === "admin";
   const supabase = await createClient();
-  const { data: organizations } = await supabase.from("organizations_revaha").select("*").order("name");
+  const [{ data: organizations }, { data: resellerCompanies }] = await Promise.all([
+    supabase.from("organizations_revaha").select("*, reseller_companies_revaha(name)").order("name"),
+    isSuperAdmin ? supabase.from("reseller_companies_revaha").select("id, name").order("name") : Promise.resolve({ data: [] }),
+  ]);
 
   const organizationIds = (organizations ?? []).map((o) => o.id);
   const [{ data: allUsers }, { count: facilityCount }] = await Promise.all([
@@ -62,7 +68,7 @@ export default async function RevahaOrganizationsPage() {
         </div>
       </div>
 
-      <CreateOrganizationForm />
+      <CreateOrganizationForm resellerCompanies={isSuperAdmin ? resellerCompanies ?? [] : undefined} />
 
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xs">
         <div className="flex items-center gap-2 border-b border-slate-200 bg-slate-50/70 px-4 py-3">
@@ -74,7 +80,13 @@ export default async function RevahaOrganizationsPage() {
         </div>
         <div className="divide-y divide-slate-100">
           {(organizations ?? []).map((o) => (
-            <OrganizationRow key={o.id} organization={o} users={(allUsers ?? []).filter((u) => u.organization_id === o.id)} />
+            <OrganizationRow
+              key={o.id}
+              organization={o}
+              companyName={(o.reseller_companies_revaha as unknown as { name: string } | null)?.name ?? null}
+              users={(allUsers ?? []).filter((u) => u.organization_id === o.id)}
+              resellerCompanies={isSuperAdmin ? resellerCompanies ?? [] : undefined}
+            />
           ))}
           {(organizations ?? []).length === 0 && <div className="px-4 py-3 text-sm text-slate-500">אין ארגונים עדיין</div>}
         </div>

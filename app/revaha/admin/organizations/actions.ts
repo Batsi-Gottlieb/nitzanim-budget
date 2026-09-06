@@ -20,11 +20,38 @@ async function requireRevahaAdmin() {
   return session;
 }
 
+/** Super-admin, or a reseller company's own admin/staff managing their own clients. */
+async function requireRevahaManager() {
+  const session = await getCurrentRevahaProfile();
+  const role = session?.profile?.role;
+  if (role !== "admin" && role !== "company_admin" && role !== "company_staff") {
+    throw new Error("פעולה זו זמינה למנהלי מערכת בלבד");
+  }
+  return session!;
+}
+
+/**
+ * Confirms `userId` is a profiles_revaha row visible to the CURRENT caller (via the
+ * RLS-bound client, not the service-role admin client), before any Admin API call
+ * touches that user. Without this, a company_admin/staff could pass an arbitrary
+ * user_id to a password-reset action and affect a user outside their own company.
+ */
+async function assertUserInScope(userId: string) {
+  const supabase = await createClient();
+  const { data } = await supabase.from("profiles_revaha").select("id, email").eq("id", userId).maybeSingle();
+  if (!data?.email) throw new Error("משתמש זה אינו בטווח הניהול שלך");
+  return data.email as string;
+}
+
 export async function createOrganizationWithUser(formData: FormData) {
-  await requireRevahaAdmin();
+  const session = await requireRevahaManager();
   const name = formData.get("name") as string;
   const email = formData.get("email") as string;
   const phone = (formData.get("phone") as string) || null;
+  const isSuperAdmin = session.profile!.role === "admin";
+  const reseller_company_id = isSuperAdmin
+    ? (formData.get("reseller_company_id") as string) || null
+    : session.profile!.reseller_company_id;
 
   const supabase = await createClient();
   const password = randomPassword();
@@ -41,7 +68,7 @@ export async function createOrganizationWithUser(formData: FormData) {
 
   const { data: organization, error: orgError } = await supabase
     .from("organizations_revaha")
-    .insert({ name, contact_email: email, contact_phone: phone })
+    .insert({ name, contact_email: email, contact_phone: phone, reseller_company_id })
     .select()
     .single();
   if (orgError) return { error: orgError.message };
@@ -55,7 +82,7 @@ export async function createOrganizationWithUser(formData: FormData) {
 }
 
 export async function updateOrganizationDetails(organizationId: string, formData: FormData) {
-  await requireRevahaAdmin();
+  await requireRevahaManager();
   const supabase = await createClient();
   const name = formData.get("name") as string;
   const contact_email = (formData.get("contact_email") as string) || null;
@@ -65,8 +92,18 @@ export async function updateOrganizationDetails(organizationId: string, formData
   revalidatePath("/revaha/admin/organizations");
 }
 
-export async function addUserToOrganization(organizationId: string, formData: FormData) {
+/** Super-admin only: reassign (or unassign) which reseller company owns an organization. */
+export async function assignOrganizationToCompany(organizationId: string, formData: FormData) {
   await requireRevahaAdmin();
+  const reseller_company_id = (formData.get("reseller_company_id") as string) || null;
+  const supabase = await createClient();
+  await supabase.from("organizations_revaha").update({ reseller_company_id }).eq("id", organizationId);
+  revalidatePath(`/revaha/admin/organizations/${organizationId}`);
+  revalidatePath("/revaha/admin/organizations");
+}
+
+export async function addUserToOrganization(organizationId: string, formData: FormData) {
+  await requireRevahaManager();
   const email = formData.get("email") as string;
   const full_name = (formData.get("full_name") as string) || null;
   const password = randomPassword();
@@ -91,7 +128,8 @@ export async function addUserToOrganization(organizationId: string, formData: Fo
 }
 
 export async function resetOrgUserPassword(userId: string, organizationId: string) {
-  await requireRevahaAdmin();
+  await requireRevahaManager();
+  await assertUserInScope(userId);
   const password = randomPassword();
   const adminClient = createAdminClient();
   const { error } = await adminClient.auth.admin.updateUserById(userId, { password });
@@ -101,7 +139,8 @@ export async function resetOrgUserPassword(userId: string, organizationId: strin
 }
 
 export async function setOrgUserPassword(userId: string, organizationId: string, formData: FormData) {
-  await requireRevahaAdmin();
+  await requireRevahaManager();
+  await assertUserInScope(userId);
   const password = formData.get("password") as string;
   if (!password || password.length < 6) {
     return { error: "הסיסמה חייבת להכיל לפחות 6 תווים" };
@@ -114,17 +153,15 @@ export async function setOrgUserPassword(userId: string, organizationId: string,
 }
 
 export async function impersonateOrgUser(formData: FormData) {
-  const session = await requireRevahaAdmin();
+  const session = await requireRevahaManager();
   const userId = formData.get("user_id") as string;
+  const email = await assertUserInScope(userId);
 
   const supabase = await createClient();
-  const { data: profile } = await supabase.from("profiles_revaha").select("email").eq("id", userId).maybeSingle();
-  if (!profile?.email) throw new Error("לא נמצא אימייל עבור משתמש זה");
-
   const adminClient = createAdminClient();
   const { data, error } = await adminClient.auth.admin.generateLink({
     type: "magiclink",
-    email: profile.email,
+    email,
   });
   if (error || !data.properties?.hashed_token) {
     throw new Error(error?.message ?? "יצירת קישור הכניסה נכשלה");
@@ -137,7 +174,7 @@ export async function impersonateOrgUser(formData: FormData) {
   if (verifyError) throw new Error(verifyError.message);
 
   const cookieStore = await cookies();
-  cookieStore.set(REVAHA_IMPERSONATOR_COOKIE, signAdminId(session!.userId), {
+  cookieStore.set(REVAHA_IMPERSONATOR_COOKIE, signAdminId(session.userId), {
     httpOnly: true,
     sameSite: "lax",
     path: "/",

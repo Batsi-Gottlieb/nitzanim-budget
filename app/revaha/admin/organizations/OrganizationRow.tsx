@@ -6,9 +6,26 @@ import { impersonateOrgUser } from "./actions";
 import { EditOrganizationModal } from "./EditOrganizationModal";
 
 type UserRow = { id: string; email: string | null; full_name: string | null };
-type OrganizationInfo = { id: string; name: string; contact_email: string | null; contact_phone: string | null };
+type OrganizationInfo = {
+  id: string;
+  name: string;
+  contact_email: string | null;
+  contact_phone: string | null;
+  reseller_company_id: string | null;
+};
+type ResellerCompanyOption = { id: string; name: string };
 
-export function OrganizationRow({ organization, users }: { organization: OrganizationInfo; users: UserRow[] }) {
+export function OrganizationRow({
+  organization,
+  users,
+  companyName,
+  resellerCompanies,
+}: {
+  organization: OrganizationInfo;
+  users: UserRow[];
+  companyName?: string | null;
+  resellerCompanies?: ResellerCompanyOption[];
+}) {
   const [modalOpen, setModalOpen] = useState(false);
   const primaryUser = users[0];
 
@@ -17,6 +34,9 @@ export function OrganizationRow({ organization, users }: { organization: Organiz
       <div className="min-w-0 flex-1 space-y-1">
         <div className="flex items-center gap-2">
           <span className="truncate text-sm font-bold text-slate-900">{organization.name}</span>
+          {companyName && (
+            <span className="rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-600">{companyName}</span>
+          )}
         </div>
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-600">
           {organization.contact_email && (
@@ -63,7 +83,12 @@ export function OrganizationRow({ organization, users }: { organization: Organiz
         </button>
       </div>
       {modalOpen && (
-        <EditOrganizationModal organization={organization} initialUsers={users} onClose={() => setModalOpen(false)} />
+        <EditOrganizationModal
+          organization={organization}
+          initialUsers={users}
+          resellerCompanies={resellerCompanies}
+          onClose={() => setModalOpen(false)}
+        />
       )}
     </div>
   );

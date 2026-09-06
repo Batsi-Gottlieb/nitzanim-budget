@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Database, LayoutDashboard, ShieldCheck, Users } from "lucide-react";
+import { Briefcase, Database, LayoutDashboard, ShieldCheck, Users, Wallet } from "lucide-react";
+import type { RevahaRole } from "@/lib/revaha/types";
 
 type NavItem = {
   href: string;
@@ -14,19 +15,17 @@ type NavItem = {
 
 type StatusStat = { label: string; value: number; accent?: boolean };
 
-export function RevahaSidebar({
-  isAdmin,
-  fullName,
-  stats,
-}: {
-  isAdmin: boolean;
-  fullName: string | null;
-  stats: StatusStat[];
-}) {
-  const pathname = usePathname();
+const ROLE_LABELS: Record<RevahaRole, string> = {
+  admin: "Admin",
+  org_user: "ארגון",
+  company_admin: "מנהל חברה",
+  company_staff: "עובד חברה",
+};
 
-  const navItems: NavItem[] = isAdmin
-    ? [
+function navItemsForRole(role: RevahaRole): NavItem[] {
+  switch (role) {
+    case "admin":
+      return [
         { href: "/revaha", title: "לוח בקרה", subtitle: "תמונת מצב תקציבית כוללת", icon: LayoutDashboard },
         {
           href: "/revaha/admin/organizations",
@@ -35,16 +34,61 @@ export function RevahaSidebar({
           icon: Users,
         },
         {
+          href: "/revaha/admin/reseller-companies",
+          title: "לקוחות (חברות) מערכת",
+          subtitle: "רואי חשבון ולקוחותיהם",
+          icon: Briefcase,
+        },
+        {
           href: "/revaha/admin/base-data",
           title: "בסיס מידע ומודלי תקן",
           subtitle: "תקני רווחה, תפקידים ושכר ייחוס",
           icon: Database,
         },
-      ]
-    : [
+        { href: "/revaha/admin/payments", title: "תשלומים", subtitle: "מעקב תשלומי חברות מערכת", icon: Wallet },
+      ];
+    case "company_admin":
+    case "company_staff":
+      return [
+        { href: "/revaha", title: "לוח בקרה", subtitle: "תמונת מצב הלקוחות שלכם", icon: LayoutDashboard },
+        {
+          href: "/revaha/admin/organizations",
+          title: "ניהול לקוחות ומשתמשים",
+          subtitle: "ארגונים מפעילים, חשבונות כניסה",
+          icon: Users,
+        },
+      ];
+    case "org_user":
+    default:
+      return [
         { href: "/revaha", title: "לוח בקרה", subtitle: "תקציב מאוחד לכלל הפנימיות", icon: LayoutDashboard },
         { href: "/revaha/org/facilities", title: "הפנימיות שלי", subtitle: "ניהול פנימיות ותקציבים", icon: Users },
       ];
+  }
+}
+
+export function RevahaSidebar({
+  role,
+  fullName,
+  stats,
+  companyName,
+  companyLogoUrl,
+}: {
+  role: RevahaRole;
+  fullName: string | null;
+  stats: StatusStat[];
+  companyName?: string | null;
+  companyLogoUrl?: string | null;
+}) {
+  const pathname = usePathname();
+  const navItems = navItemsForRole(role);
+  const isAdmin = role === "admin";
+  const menuLabel = isAdmin ? "תפריט מנהל מערכת" : role === "org_user" ? "תפריט ארגון" : "תפריט חברה";
+  const roleSubtitle = isAdmin
+    ? "ניהול כלל הארגונים והפנימיות"
+    : role === "org_user"
+      ? "ניהול הפנימיות שלכם"
+      : "ניהול הלקוחות שלכם";
 
   return (
     <aside className="flex w-72 shrink-0 flex-col border-l border-slate-200/80 bg-white shadow-xs min-h-screen select-none">
@@ -53,12 +97,19 @@ export function RevahaSidebar({
           href="/revaha"
           className="group -m-1.5 flex w-full items-center gap-3 rounded-xl p-1.5 text-right transition-all hover:bg-white hover:shadow-2xs"
         >
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-600 text-lg font-black text-white shadow-xs transition-all group-hover:scale-105 group-hover:bg-indigo-700">
-            ר
-          </div>
+          {companyLogoUrl ? (
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={companyLogoUrl} alt={companyName ?? ""} className="h-full w-full object-contain" />
+            </div>
+          ) : (
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-600 text-lg font-black text-white shadow-xs transition-all group-hover:scale-105 group-hover:bg-indigo-700">
+              ר
+            </div>
+          )}
           <div className="min-w-0 flex-1">
             <span className="text-sm font-bold tracking-tight text-slate-900 transition-colors group-hover:text-indigo-600">
-              תקצוב ובקרה
+              {companyName ?? "תקצוב ובקרה"}
             </span>
             <p className="mt-0.5 text-[11px] font-medium leading-tight text-slate-400">פנימיות רווחה</p>
           </div>
@@ -71,18 +122,16 @@ export function RevahaSidebar({
               {fullName ?? "משתמש"}
             </span>
             <span className="rounded border border-indigo-100 bg-indigo-50 px-1.5 py-0.5 text-[9px] font-bold text-indigo-700">
-              {isAdmin ? "Admin" : "ארגון"}
+              {ROLE_LABELS[role]}
             </span>
           </div>
-          <p className="text-[10px] text-slate-500">{isAdmin ? "ניהול כלל הארגונים והפנימיות" : "ניהול הפנימיות שלכם"}</p>
+          <p className="text-[10px] text-slate-500">{roleSubtitle}</p>
         </div>
       </div>
 
       <div className="flex-1 space-y-4 overflow-y-auto p-3">
         <div>
-          <div className="px-3 pb-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-            {isAdmin ? "תפריט מנהל מערכת" : "תפריט ארגון"}
-          </div>
+          <div className="px-3 pb-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">{menuLabel}</div>
           <nav className="space-y-1" aria-label="ניווט">
             {navItems.map((item) => {
               const active = item.href === "/revaha" ? pathname === "/revaha" : pathname?.startsWith(item.href);
@@ -98,7 +147,7 @@ export function RevahaSidebar({
                   }`}
                 >
                   <div className="flex min-w-0 items-center gap-2.5">
-                    <span className={active ? "text-indigo-600" : "text-indigo-600"}>
+                    <span className="text-indigo-600">
                       <Icon className="h-4 w-4" />
                     </span>
                     <div className="min-w-0">

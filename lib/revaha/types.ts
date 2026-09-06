@@ -1,7 +1,10 @@
+export type RevahaRole = "admin" | "org_user" | "company_admin" | "company_staff";
+
 export type RevahaProfile = {
   id: string;
-  role: "admin" | "org_user";
+  role: RevahaRole;
   organization_id: string | null;
+  reseller_company_id: string | null;
   full_name: string | null;
   email: string | null;
 };
@@ -11,6 +14,30 @@ export type Organization = {
   name: string;
   contact_email: string | null;
   contact_phone: string | null;
+  reseller_company_id: string | null;
+};
+
+export type ResellerCompany = {
+  id: string;
+  name: string;
+  contact_email: string | null;
+  contact_phone: string | null;
+  logo_url: string | null;
+  url_token: string | null;
+  billing_notes: string | null;
+  billing_customer_ref: string | null;
+  is_active: boolean;
+};
+
+export type Payment = {
+  id: string;
+  reseller_company_id: string;
+  amount: number;
+  payment_date: string;
+  method: string | null;
+  card_last4: string | null;
+  reference: string | null;
+  notes: string | null;
 };
 
 export type RoleType = {

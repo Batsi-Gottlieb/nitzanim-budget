@@ -12,10 +12,12 @@ function fmt(n: number) {
 export default async function RevahaDashboardPage() {
   const session = await getCurrentRevahaProfile();
   const supabase = await createClient();
-  const isAdmin = session?.profile?.role === "admin";
+  const role = session?.profile?.role;
+  const isAdmin = role === "admin";
+  const isCompanyRole = role === "company_admin" || role === "company_staff";
   const greetingName = session?.profile?.full_name ? `, ${session.profile.full_name}` : "";
 
-  if (isAdmin) {
+  if (isAdmin || isCompanyRole) {
     const [{ count: orgCount }, { data: facilities }, { data: staff }, { data: assignments }, { data: roleTypeRates }, { data: expenses }, { data: roles }] =
       await Promise.all([
         supabase.from("organizations_revaha").select("*", { count: "exact", head: true }),
@@ -39,7 +41,9 @@ export default async function RevahaDashboardPage() {
     return (
       <div className="space-y-6">
         <div className="rounded-2xl border border-slate-200 bg-white px-6 py-5 shadow-2xs">
-          <h1 className="text-xl font-black tracking-tight text-slate-900 sm:text-2xl">מערכת ניהול תקציב רווחה</h1>
+          <h1 className="text-xl font-black tracking-tight text-slate-900 sm:text-2xl">
+            {isAdmin ? "מערכת ניהול תקציב רווחה" : "תמונת מצב הלקוחות שלכם"}
+          </h1>
           <p className="mt-1 text-sm text-slate-500">שלום{greetingName} 👋</p>
         </div>
 
