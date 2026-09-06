@@ -11,6 +11,7 @@ export type Staff = {
   id: string;
   full_name: string;
   phone: string | null;
+  id_number: string | null;
   monthly_addition: number | null;
   monthly_travel: number | null;
   has_training_fund: boolean;

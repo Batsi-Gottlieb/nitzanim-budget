@@ -2,8 +2,16 @@ import Link from "next/link";
 import { Banknote, Building2, FileDown, ReceiptText, Users2, Wallet } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentRevahaProfile } from "@/lib/revaha/auth";
-import { computeFacilityBudget, addFacilityBudgets } from "@/lib/revaha/calc";
+import {
+  addFacilityBudgets,
+  addFacilityIncomes,
+  computeFacilityBudget,
+  computeFacilityIncome,
+  computeProfitLoss,
+  facilityEmployerCostMonthly,
+} from "@/lib/revaha/calc";
 import { KpiCard } from "@/components/revaha/KpiCard";
+import { ProfitLossTable } from "@/components/revaha/ProfitLossTable";
 
 function fmt(n: number) {
   return n.toLocaleString("he-IL", { maximumFractionDigits: 0 });
@@ -18,15 +26,25 @@ export default async function RevahaDashboardPage() {
   const greetingName = session?.profile?.full_name ? `, ${session.profile.full_name}` : "";
 
   if (isAdmin || isCompanyRole) {
-    const [{ count: orgCount }, { data: facilities }, { data: staff }, { data: assignments }, { data: expenses }] =
-      await Promise.all([
-        supabase.from("organizations_revaha").select("*", { count: "exact", head: true }),
-        supabase.from("facilities_revaha").select("*"),
-        supabase.from("staff_revaha").select("*"),
-        supabase.from("staff_role_assignments_revaha").select("*"),
-        supabase.from("facility_expense_line_items_revaha").select("*"),
-      ]);
+    const [
+      { count: orgCount },
+      { data: facilities },
+      { data: staff },
+      { data: assignments },
+      { data: expenses },
+      { data: facilityModels },
+      { data: incomeRateCategories },
+    ] = await Promise.all([
+      supabase.from("organizations_revaha").select("*", { count: "exact", head: true }),
+      supabase.from("facilities_revaha").select("*"),
+      supabase.from("staff_revaha").select("*"),
+      supabase.from("staff_role_assignments_revaha").select("*"),
+      supabase.from("facility_expense_line_items_revaha").select("*"),
+      supabase.from("facility_models_revaha").select("*"),
+      supabase.from("income_rate_categories_revaha").select("*"),
+    ]);
 
+    const facilityModelById = new Map((facilityModels ?? []).map((m) => [m.id, m]));
     const summaries = (facilities ?? []).map((f) => {
       const fStaff = (staff ?? []).filter((s) => s.facility_id === f.id);
       const fStaffIds = new Set(fStaff.map((s) => s.id));
@@ -35,6 +53,19 @@ export default async function RevahaDashboardPage() {
       return computeFacilityBudget(fAssignments, fStaff, f, fExpenses);
     });
     const total = addFacilityBudgets(summaries);
+
+    const totalIncome = addFacilityIncomes(
+      (facilities ?? []).map((f) =>
+        computeFacilityIncome(f, facilityModelById.get(f.facility_model_id ?? ""), incomeRateCategories ?? [])
+      )
+    );
+    const totalWageEmployerCost = (facilities ?? []).reduce((sum, f) => {
+      const fStaff = (staff ?? []).filter((s) => s.facility_id === f.id);
+      const fStaffIds = new Set(fStaff.map((s) => s.id));
+      const fAssignments = (assignments ?? []).filter((a) => fStaffIds.has(a.staff_id));
+      return sum + facilityEmployerCostMonthly(fStaff, fAssignments, f);
+    }, 0);
+    const profitLoss = computeProfitLoss(totalIncome, totalWageEmployerCost, total.expensesMonthly);
 
     return (
       <div className="space-y-6">
@@ -72,6 +103,8 @@ export default async function RevahaDashboardPage() {
             icon={Wallet}
           />
         </div>
+
+        <ProfitLossTable summary={profitLoss} title="דוח רווח והפסד — כל הרשת" />
       </div>
     );
   }
@@ -88,7 +121,7 @@ export default async function RevahaDashboardPage() {
 
   const facilityIds = (facilities ?? []).map((f) => f.id);
 
-  const [{ data: staff }, { data: assignments }, { data: expenses }] =
+  const [{ data: staff }, { data: assignments }, { data: expenses }, { data: facilityModels }, { data: incomeRateCategories }] =
     await Promise.all([
       facilityIds.length
         ? supabase.from("staff_revaha").select("*").in("facility_id", facilityIds)
@@ -102,8 +135,11 @@ export default async function RevahaDashboardPage() {
       facilityIds.length
         ? supabase.from("facility_expense_line_items_revaha").select("*").in("facility_id", facilityIds)
         : Promise.resolve({ data: [] }),
+      supabase.from("facility_models_revaha").select("*"),
+      supabase.from("income_rate_categories_revaha").select("*"),
     ]);
 
+  const facilityModelById = new Map((facilityModels ?? []).map((m) => [m.id, m]));
   const summaries = (facilities ?? []).map((f) => {
     const fStaff = (staff ?? []).filter((s) => s.facility_id === f.id);
     const fStaffIds = new Set(fStaff.map((s) => s.id));
@@ -116,6 +152,17 @@ export default async function RevahaDashboardPage() {
   });
 
   const total = addFacilityBudgets(summaries.map((s) => s.summary));
+
+  const totalIncome = addFacilityIncomes(
+    (facilities ?? []).map((f) => computeFacilityIncome(f, facilityModelById.get(f.facility_model_id ?? ""), incomeRateCategories ?? []))
+  );
+  const totalWageEmployerCost = (facilities ?? []).reduce((sum, f) => {
+    const fStaff = (staff ?? []).filter((s) => s.facility_id === f.id);
+    const fStaffIds = new Set(fStaff.map((s) => s.id));
+    const fAssignments = (assignments ?? []).filter((a) => fStaffIds.has(a.staff_id));
+    return sum + facilityEmployerCostMonthly(fStaff, fAssignments, f);
+  }, 0);
+  const profitLoss = computeProfitLoss(totalIncome, totalWageEmployerCost, total.expensesMonthly);
 
   return (
     <div className="space-y-6">
@@ -155,6 +202,8 @@ export default async function RevahaDashboardPage() {
           {summaries.length === 0 && <div className="px-4 py-3 text-sm text-slate-500">אין פנימיות עדיין</div>}
         </div>
       </div>
+
+      <ProfitLossTable summary={profitLoss} title="דוח רווח והפסד — כלל הפנימיות שלכם" />
     </div>
   );
 }

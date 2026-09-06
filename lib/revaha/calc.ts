@@ -1,4 +1,4 @@
-import { Facility, FacilityExpenseLineItem, FacilityModelRole, Role, RoleType, Staff, StaffRoleAssignment } from "./types";
+import { Facility, FacilityExpenseLineItem, FacilityModel, FacilityModelRole, IncomeRateCategory, Role, RoleType, Staff, StaffRoleAssignment } from "./types";
 
 export const AVG_WEEKS_PER_MONTH = 4.3;
 export const DEFAULT_WEEKENDS_PER_MONTH = 4.3;
@@ -71,6 +71,132 @@ export function assignmentHourlyRate(assignment: StaffRoleAssignment): number {
 export function assignmentMonthlyWage(assignment: StaffRoleAssignment, facility: Pick<Facility, "weekends_per_month">): number {
   if (assignment.pay_mode === "monthly") return assignment.monthly_salary ?? 0;
   return monthlyHoursForAssignment(assignment, facility) * (assignment.hourly_rate ?? 0);
+}
+
+/** A staff member's total gross salary for the month — the sum of assignmentMonthlyWage across
+ * every role they hold. */
+export function staffGrossSalaryMonthly(
+  staffId: string,
+  assignments: StaffRoleAssignment[],
+  facility: Pick<Facility, "weekends_per_month">
+): number {
+  return assignments
+    .filter((a) => a.staff_id === staffId)
+    .reduce((sum, a) => sum + assignmentMonthlyWage(a, facility), 0);
+}
+
+/**
+ * Employer cost (עלות מעביד) — what it actually costs to employ this person, regardless of how
+ * many roles they hold — used as the wage figure for the profit & loss report, per the employer's
+ * own formula:
+ *   שכיר, ללא קרן השתלמות: (ברוטו + תוספות קבועות) * 1.35 + נסיעות * 1.12
+ *   שכיר, עם קרן השתלמות:   (ברוטו + תוספות קבועות) * 1.425 + נסיעות * 1.12
+ *   עצמאי:                  ברוטו + תוספות קבועות + נסיעות (no multiplier — no employer contributions)
+ * "תוספות קבועות" and "נסיעות" live on the staff record (shared across all their roles), so this
+ * is computed once per employee, not per role, to avoid counting them more than once.
+ */
+export function staffEmployerCostMonthly(
+  staff: Pick<Staff, "id" | "monthly_addition" | "monthly_travel" | "has_training_fund" | "employment_type">,
+  assignments: StaffRoleAssignment[],
+  facility: Pick<Facility, "weekends_per_month">
+): number {
+  const grossSalary = staffGrossSalaryMonthly(staff.id, assignments, facility);
+  const fixedAdditions = staff.monthly_addition ?? 0;
+  const travel = staff.monthly_travel ?? 0;
+
+  if (staff.employment_type === "עצמאי") {
+    return grossSalary + fixedAdditions + travel;
+  }
+  const multiplier = staff.has_training_fund ? 1.425 : 1.35;
+  return (grossSalary + fixedAdditions) * multiplier + travel * 1.12;
+}
+
+/** Total employer cost across every staff member in a facility — the wage-cost line for the
+ * profit & loss report (see staffEmployerCostMonthly). */
+export function facilityEmployerCostMonthly(
+  staffList: Pick<Staff, "id" | "monthly_addition" | "monthly_travel" | "has_training_fund" | "employment_type">[],
+  assignments: StaffRoleAssignment[],
+  facility: Pick<Facility, "weekends_per_month">
+): number {
+  return staffList.reduce((sum, staff) => sum + staffEmployerCostMonthly(staff, assignments, facility), 0);
+}
+
+export type FacilityIncomeSummary = {
+  participantIncomeMonthly: number;
+  rentReimbursementIncomeMonthly: number;
+  securityIncomeMonthly: number;
+  totalIncomeMonthly: number;
+};
+
+/**
+ * Monthly income for one facility, from its model's rate definitions (set once by the admin in
+ * base-data) applied to how many children are actually placed there today:
+ *   הכנסות משתתפים = מושמים בפועל * תעריף המשתתף של המודל
+ *   שיפוי שכ"ד      = מושמים בפועל * תעריף שיפוי שכ"ד של המודל
+ *   השתתפות שמירה   = סכום קבוע חודשי מהמודל (לא תלוי במושמים)
+ */
+export function computeFacilityIncome(
+  facility: Pick<Facility, "occupancy_actual">,
+  facilityModel: Pick<FacilityModel, "participant_rate_id" | "rent_reimbursement_rate_id" | "security_participation_monthly"> | undefined,
+  incomeRateCategories: Pick<IncomeRateCategory, "id" | "monthly_amount">[]
+): FacilityIncomeSummary {
+  const occupancy = facility.occupancy_actual ?? 0;
+  const rateById = new Map(incomeRateCategories.map((c) => [c.id, c.monthly_amount]));
+  const participantRate = facilityModel?.participant_rate_id ? rateById.get(facilityModel.participant_rate_id) ?? 0 : 0;
+  const rentReimbursementRate = facilityModel?.rent_reimbursement_rate_id
+    ? rateById.get(facilityModel.rent_reimbursement_rate_id) ?? 0
+    : 0;
+  const participantIncomeMonthly = occupancy * participantRate;
+  const rentReimbursementIncomeMonthly = occupancy * rentReimbursementRate;
+  const securityIncomeMonthly = facilityModel?.security_participation_monthly ?? 0;
+  return {
+    participantIncomeMonthly,
+    rentReimbursementIncomeMonthly,
+    securityIncomeMonthly,
+    totalIncomeMonthly: participantIncomeMonthly + rentReimbursementIncomeMonthly + securityIncomeMonthly,
+  };
+}
+
+export function addFacilityIncomes(summaries: FacilityIncomeSummary[]): FacilityIncomeSummary {
+  return summaries.reduce(
+    (acc, s) => ({
+      participantIncomeMonthly: acc.participantIncomeMonthly + s.participantIncomeMonthly,
+      rentReimbursementIncomeMonthly: acc.rentReimbursementIncomeMonthly + s.rentReimbursementIncomeMonthly,
+      securityIncomeMonthly: acc.securityIncomeMonthly + s.securityIncomeMonthly,
+      totalIncomeMonthly: acc.totalIncomeMonthly + s.totalIncomeMonthly,
+    }),
+    { participantIncomeMonthly: 0, rentReimbursementIncomeMonthly: 0, securityIncomeMonthly: 0, totalIncomeMonthly: 0 }
+  );
+}
+
+export type ProfitLossSummary = {
+  income: FacilityIncomeSummary;
+  wageMonthly: number;
+  expensesMonthly: number;
+  totalCostsMonthly: number;
+  netMonthly: number;
+  netAnnual: number;
+  totalIncomeAnnual: number;
+  totalCostsAnnual: number;
+};
+
+/** Monthly + annual profit & loss: income (see computeFacilityIncome) against employer-cost wages
+ * (see facilityEmployerCostMonthly, NOT gross salary) plus general operating expenses. Annual
+ * figures are simply the monthly ones times 12, matching how the reference model itself projects
+ * a "צפי שנתי" from its "חודש ממוצע" columns. */
+export function computeProfitLoss(income: FacilityIncomeSummary, wageMonthly: number, expensesMonthly: number): ProfitLossSummary {
+  const totalCostsMonthly = wageMonthly + expensesMonthly;
+  const netMonthly = income.totalIncomeMonthly - totalCostsMonthly;
+  return {
+    income,
+    wageMonthly,
+    expensesMonthly,
+    totalCostsMonthly,
+    netMonthly,
+    netAnnual: netMonthly * 12,
+    totalIncomeAnnual: income.totalIncomeMonthly * 12,
+    totalCostsAnnual: totalCostsMonthly * 12,
+  };
 }
 
 export type FacilityBudgetSummary = {

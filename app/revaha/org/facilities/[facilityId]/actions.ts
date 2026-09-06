@@ -71,6 +71,29 @@ function parsePayFromForm(formData: FormData, prefix = "") {
   };
 }
 
+/**
+ * Looks for another staff member in the same facility who already holds this exact role and
+ * shares the given ת.ז — a strong signal the same person was accidentally entered twice instead
+ * of just getting a second role on their existing record. Returns that person's name for a clear
+ * warning message, or null if no such duplicate exists.
+ */
+async function findDuplicateAssignmentByIdNumber(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  facilityId: string,
+  idNumber: string,
+  roleId: string,
+  excludeStaffId?: string
+): Promise<string | null> {
+  const { data } = await supabase
+    .from("staff_role_assignments_revaha")
+    .select("staff_id, staff_revaha!inner(id, full_name, id_number, facility_id)")
+    .eq("role_id", roleId)
+    .eq("staff_revaha.facility_id", facilityId)
+    .eq("staff_revaha.id_number", idNumber);
+  const match = (data ?? []).find((a) => a.staff_id !== excludeStaffId);
+  return match ? ((match.staff_revaha as unknown as { full_name: string }).full_name ?? null) : null;
+}
+
 export async function updateStaff(staffId: string, facilityId: string, formData: FormData) {
   const supabase = await createClient();
   await supabase
@@ -78,6 +101,7 @@ export async function updateStaff(staffId: string, facilityId: string, formData:
     .update({
       full_name: formData.get("full_name") as string,
       phone: (formData.get("phone") as string) || null,
+      id_number: (formData.get("id_number") as string) || null,
       monthly_addition: num(formData, "monthly_addition"),
       monthly_travel: num(formData, "monthly_travel"),
       has_training_fund: formData.get("has_training_fund") === "on",
@@ -95,12 +119,29 @@ export async function deleteStaff(staffId: string, facilityId: string) {
 
 export async function createStaffWithAssignments(facilityId: string, formData: FormData) {
   const supabase = await createClient();
+  const idNumber = (formData.get("id_number") as string) || null;
+
+  const roleKeys = ((formData.get("role_keys") as string) || "").split(",").filter(Boolean);
+  const roleIds = roleKeys
+    .map((key) => formData.get(`role_${key}_id`) as string)
+    .filter((roleId): roleId is string => Boolean(roleId));
+
+  if (idNumber) {
+    for (const roleId of roleIds) {
+      const duplicateName = await findDuplicateAssignmentByIdNumber(supabase, facilityId, idNumber, roleId);
+      if (duplicateName) {
+        return { error: `כבר קיים בפנימייה עובד עם ת.ז ${idNumber} ותפקיד זהה (${duplicateName}) — ייתכן שמדובר באותו עובד שנקלט פעמיים` };
+      }
+    }
+  }
+
   const { data: staffRow, error } = await supabase
     .from("staff_revaha")
     .insert({
       facility_id: facilityId,
       full_name: formData.get("full_name") as string,
       phone: (formData.get("phone") as string) || null,
+      id_number: idNumber,
       monthly_addition: num(formData, "monthly_addition"),
       monthly_travel: num(formData, "monthly_travel"),
       has_training_fund: formData.get("has_training_fund") === "on",
@@ -110,7 +151,6 @@ export async function createStaffWithAssignments(facilityId: string, formData: F
     .single();
   if (error) return { error: error.message };
 
-  const roleKeys = ((formData.get("role_keys") as string) || "").split(",").filter(Boolean);
   const assignments = [];
   for (const key of roleKeys) {
     const prefix = `role_${key}_`;
@@ -138,6 +178,15 @@ export async function createStaffRoleAssignment(facilityId: string, formData: Fo
   const role_id = formData.get("role_id") as string;
   if (!staff_id || !role_id) return { error: "יש לבחור עובד ותפקיד" };
   const supabase = await createClient();
+
+  const { data: targetStaff } = await supabase.from("staff_revaha").select("id_number").eq("id", staff_id).maybeSingle();
+  if (targetStaff?.id_number) {
+    const duplicateName = await findDuplicateAssignmentByIdNumber(supabase, facilityId, targetStaff.id_number, role_id, staff_id);
+    if (duplicateName) {
+      return { error: `כבר קיים בפנימייה עובד עם ת.ז ${targetStaff.id_number} ותפקיד זהה (${duplicateName}) — ייתכן שמדובר באותו עובד שנקלט פעמיים` };
+    }
+  }
+
   const { error } = await supabase.from("staff_role_assignments_revaha").insert({
     staff_id,
     role_id,
@@ -221,6 +270,7 @@ export async function deleteExpenseLineItem(id: string, facilityId: string) {
 type ImportRow = {
   fullName: string;
   phone: string;
+  idNumber: string;
   roleName: string;
   pay_mode: "hourly" | "monthly";
   hourly_rate: number | null;
@@ -237,7 +287,7 @@ type ImportRow = {
   weekends_per_month: number | null;
 };
 
-const DAY_GRID_START_COL = 9; // columns 9..22: 7 days * (start,end)
+const DAY_GRID_START_COL = 10; // columns 10..23: 7 days * (start,end)
 
 export async function importStaffFromExcel(facilityId: string, formData: FormData) {
   const file = formData.get("file") as File | null;
@@ -260,9 +310,9 @@ export async function importStaffFromExcel(facilityId: string, formData: FormDat
     const fullName = cellText(row.getCell(1).value);
     if (!fullName) return;
 
-    const payModeRaw = cellText(row.getCell(4).value);
+    const payModeRaw = cellText(row.getCell(5).value);
     const pay_mode: "hourly" | "monthly" = payModeRaw.includes("חודשי") ? "monthly" : "hourly";
-    const scheduleMethodLabel = cellText(row.getCell(8).value);
+    const scheduleMethodLabel = cellText(row.getCell(9).value);
     const isDetailed = scheduleMethodLabel === SCHEDULE_METHOD_LABELS.detailed;
 
     const daily_shifts: Record<string, { start: string; end: string }> = {};
@@ -274,26 +324,27 @@ export async function importStaffFromExcel(facilityId: string, formData: FormDat
       }
     }
 
-    const employmentTypeRaw = cellText(row.getCell(28).value);
-    const trainingFundRaw = cellText(row.getCell(27).value);
+    const employmentTypeRaw = cellText(row.getCell(29).value);
+    const trainingFundRaw = cellText(row.getCell(28).value);
 
     rows.push({
       fullName,
       phone: cellText(row.getCell(2).value),
-      roleName: cellText(row.getCell(3).value),
+      idNumber: cellText(row.getCell(3).value),
+      roleName: cellText(row.getCell(4).value),
       pay_mode,
-      hourly_rate: pay_mode === "hourly" ? cellNumber(row.getCell(5).value) : null,
-      monthly_salary: pay_mode === "monthly" ? cellNumber(row.getCell(6).value) : null,
-      monthly_hours: pay_mode === "monthly" ? cellNumber(row.getCell(7).value) : null,
+      hourly_rate: pay_mode === "hourly" ? cellNumber(row.getCell(6).value) : null,
+      monthly_salary: pay_mode === "monthly" ? cellNumber(row.getCell(7).value) : null,
+      monthly_hours: pay_mode === "monthly" ? cellNumber(row.getCell(8).value) : null,
       scheduleMethodLabel,
       daily_shifts,
-      weekday_hours: isDetailed ? null : cellNumber(row.getCell(23).value),
-      weekend_hours: isDetailed ? null : cellNumber(row.getCell(24).value),
-      monthly_addition: cellNumber(row.getCell(25).value),
-      monthly_travel: cellNumber(row.getCell(26).value),
+      weekday_hours: isDetailed ? null : cellNumber(row.getCell(24).value),
+      weekend_hours: isDetailed ? null : cellNumber(row.getCell(25).value),
+      monthly_addition: cellNumber(row.getCell(26).value),
+      monthly_travel: cellNumber(row.getCell(27).value),
       has_training_fund: trainingFundRaw.includes("כן"),
       employment_type: employmentTypeRaw.includes("עצמאי") ? "עצמאי" : "שכיר",
-      weekends_per_month: cellNumber(row.getCell(29).value),
+      weekends_per_month: cellNumber(row.getCell(30).value),
     });
   });
 
@@ -324,6 +375,7 @@ export async function importStaffFromExcel(facilityId: string, formData: FormDat
     facility_id: facilityId,
     full_name: fullName,
     phone: groupRows.find((r) => r.phone)?.phone || null,
+    id_number: groupRows.find((r) => r.idNumber)?.idNumber || null,
     monthly_addition: groupRows.find((r) => r.monthly_addition !== null)?.monthly_addition ?? null,
     monthly_travel: groupRows.find((r) => r.monthly_travel !== null)?.monthly_travel ?? null,
     has_training_fund: groupRows.some((r) => r.has_training_fund),
@@ -342,12 +394,20 @@ export async function importStaffFromExcel(facilityId: string, formData: FormDat
   for (const [fullName, groupRows] of groups) {
     const staffId = staffIdByName.get(fullName);
     if (!staffId) continue;
+    const idNumber = groupRows.find((r) => r.idNumber)?.idNumber || null;
     for (const row of groupRows) {
       if (!row.roleName) continue;
       const roleId = roleIdByName.get(row.roleName.trim());
       if (!roleId) {
         warnings.push(`${fullName}: תפקיד "${row.roleName}" לא נמצא ברשימת התפקידים`);
         continue;
+      }
+      if (idNumber) {
+        const duplicateName = await findDuplicateAssignmentByIdNumber(supabase, facilityId, idNumber, roleId, staffId);
+        if (duplicateName) {
+          warnings.push(`${fullName}: תפקיד "${row.roleName}" דולג — כבר קיים עובד עם ת.ז ${idNumber} ותפקיד זהה (${duplicateName})`);
+          continue;
+        }
       }
       assignmentInserts.push({
         staff_id: staffId,

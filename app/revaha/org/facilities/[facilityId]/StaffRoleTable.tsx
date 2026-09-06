@@ -19,6 +19,7 @@ type Staff = {
   id: string;
   full_name: string;
   phone: string | null;
+  id_number: string | null;
   monthly_addition: number | null;
   monthly_travel: number | null;
   has_training_fund: boolean;
@@ -226,6 +227,10 @@ function StaffIdentityEditForm({
       <div>
         <label className="mb-1 block text-[11px] text-slate-500">טלפון</label>
         <input name="phone" defaultValue={staff.phone ?? ""} className="w-full rounded-lg border border-slate-300 px-2 py-1 text-sm" />
+      </div>
+      <div>
+        <label className="mb-1 block text-[11px] text-slate-500">ת.ז</label>
+        <input name="id_number" defaultValue={staff.id_number ?? ""} className="w-full rounded-lg border border-slate-300 px-2 py-1 text-sm" />
       </div>
       <div>
         <label className="mb-1 block text-[11px] text-slate-500">תוספת חודשית</label>

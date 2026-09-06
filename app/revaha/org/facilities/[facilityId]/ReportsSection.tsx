@@ -2,17 +2,28 @@
 
 import { FileDown } from "lucide-react";
 import {
+  computeFacilityIncome,
+  computeProfitLoss,
+  facilityEmployerCostMonthly,
   roleStaffingSummary,
   roleTypeStaffingSummary,
   weeklyFullTimeHoursForRole,
   weeklyHoursForAssignment,
 } from "@/lib/revaha/calc";
 import { roleTypeDotColor } from "@/lib/revaha/roleTypeColors";
-import { Facility, FacilityModelRole, PayMode, ScheduleMethod, DailyShifts, WEEKDAY_LABELS } from "@/lib/revaha/types";
+import { Facility, FacilityModel, FacilityModelRole, IncomeRateCategory, PayMode, ScheduleMethod, DailyShifts, WEEKDAY_LABELS } from "@/lib/revaha/types";
+import { ProfitLossTable } from "@/components/revaha/ProfitLossTable";
 
 type Role = { id: string; name: string; role_type_id: string };
 type RoleType = { id: string; name: string };
-type Staff = { id: string; full_name: string };
+type Staff = {
+  id: string;
+  full_name: string;
+  monthly_addition: number | null;
+  monthly_travel: number | null;
+  has_training_fund: boolean;
+  employment_type: "שכיר" | "עצמאי";
+};
 type Assignment = {
   id: string;
   staff_id: string;
@@ -26,6 +37,7 @@ type Assignment = {
   weekend_hours: number | null;
   daily_shifts: DailyShifts | null;
 };
+type ExpenseLineItem = { id: string; monthly_amount: number | null };
 
 function fmtNum(n: number) {
   return n.toLocaleString("he-IL", { maximumFractionDigits: 1 });
@@ -85,6 +97,9 @@ function RoleTypeCard({
 export function ReportsSection({
   facility,
   facilityModelRoles,
+  facilityModel,
+  incomeRateCategories,
+  expenses,
   roles,
   roleTypes,
   assignments,
@@ -92,6 +107,9 @@ export function ReportsSection({
 }: {
   facility: Facility;
   facilityModelRoles: FacilityModelRole[];
+  facilityModel: FacilityModel | undefined;
+  incomeRateCategories: IncomeRateCategory[];
+  expenses: ExpenseLineItem[];
   roles: Role[];
   roleTypes: RoleType[];
   assignments: Assignment[];
@@ -102,8 +120,15 @@ export function ReportsSection({
   const allRoleTypeIds = roleTypes.map((rt) => rt.id);
   const staffById = new Map(staff.map((s) => [s.id, s.full_name]));
 
+  const income = computeFacilityIncome(facility, facilityModel, incomeRateCategories);
+  const wageMonthly = facilityEmployerCostMonthly(staff, assignments, facility);
+  const expensesMonthly = expenses.reduce((sum, e) => sum + (e.monthly_amount ?? 0), 0);
+  const profitLoss = computeProfitLoss(income, wageMonthly, expensesMonthly);
+
   return (
     <section className="space-y-4">
+      <ProfitLossTable summary={profitLoss} title="דוח רווח והפסד" />
+
       <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-2xs">
         <div className="mb-1 flex items-center justify-between">
           <h2 className="text-sm font-bold text-slate-900">דוחות</h2>

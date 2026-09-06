@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Briefcase, Database, LayoutDashboard, ShieldCheck, Users, Wallet } from "lucide-react";
+import { Briefcase, Database, LayoutDashboard, Library, ShieldCheck, Users, Wallet } from "lucide-react";
 import type { RevahaRole } from "@/lib/revaha/types";
 
 type NavItem = {
@@ -78,6 +78,7 @@ function navItemsForRole(role: RevahaRole): NavItem[] {
       return [
         { href: "/revaha", title: "לוח בקרה", subtitle: "תקציב מאוחד לכלל הפנימיות", icon: LayoutDashboard },
         { href: "/revaha/org/facilities", title: "הפנימיות שלי", subtitle: "ניהול פנימיות ותקציבים", icon: Users },
+        { href: "/revaha/org/facility-models", title: "מודלי פנימיות", subtitle: "תקנים ותעריפים לכל מודל", icon: Library },
       ];
   }
 }

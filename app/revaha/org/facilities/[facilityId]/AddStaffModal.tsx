@@ -98,9 +98,13 @@ export function AddStaffModal({ facilityId, roles, onClose }: { facilityId: stri
               <label className="mb-1 block text-xs font-medium text-slate-500">שם העובד</label>
               <input name="full_name" required className="w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm" />
             </div>
-            <div className="col-span-2">
+            <div>
               <label className="mb-1 block text-xs font-medium text-slate-500">טלפון</label>
               <input name="phone" className="w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm" />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-500">ת.ז</label>
+              <input name="id_number" className="w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm" />
             </div>
             <div>
               <label className="mb-1 block text-xs font-medium text-slate-500">תוספת חודשית</label>

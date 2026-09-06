@@ -106,6 +106,7 @@ export type Staff = {
   facility_id: string;
   full_name: string;
   phone: string | null;
+  id_number: string | null;
   monthly_addition: number | null;
   monthly_travel: number | null;
   has_training_fund: boolean;
@@ -116,8 +117,8 @@ export type ScheduleMethod = "detailed" | "consolidated";
 export const WEEKDAY_LABELS = ["יום א׳", "יום ב׳", "יום ג׳", "יום ד׳", "יום ה׳", "יום ו׳", "שבת"] as const;
 /** User-facing phrasing for the two scheduling methods, used consistently across the UI, the bulk-import template, and the parser. */
 export const SCHEDULE_METHOD_LABELS: Record<ScheduleMethod, string> = {
-  detailed: "א-ש (שכר קבוע)",
-  consolidated: "א-ה בנפרד ושישי שבת בנפרד",
+  detailed: "דיווח שעות מפורט",
+  consolidated: "דיווח שעות מרוכז",
 };
 
 export type DayShift = { start: string; end: string };
