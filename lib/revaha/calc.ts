@@ -218,6 +218,45 @@ export function roleTypeStaffingSummary(
   });
 }
 
+/** Merges per-facility roleStaffingSummary results into one row per role across the whole network —
+ * summing each facility's own required/assigned figures (each already scaled by that facility's own
+ * occupancy coefficient and weekend-days setting) rather than recomputing anything from scratch. */
+export function mergeRoleStaffingSummaries(perFacility: RoleStaffingRow[][]): RoleStaffingRow[] {
+  const byRole = new Map<string, RoleStaffingRow[]>();
+  for (const rows of perFacility) {
+    for (const row of rows) {
+      if (!byRole.has(row.roleId)) byRole.set(row.roleId, []);
+      byRole.get(row.roleId)!.push(row);
+    }
+  }
+
+  const sumOrNull = (group: RoleStaffingRow[], select: (r: RoleStaffingRow) => number | null) => {
+    const values = group.map(select).filter((v): v is number => v != null);
+    return values.length ? values.reduce((a, b) => a + b, 0) : null;
+  };
+
+  return Array.from(byRole.entries()).map(([roleId, group]) => {
+    const requiredPositions = sumOrNull(group, (r) => r.requiredPositions);
+    const requiredMonthlyHours = sumOrNull(group, (r) => r.requiredMonthlyHours);
+    const assignedPositionsEquivalent = sumOrNull(group, (r) => r.assignedPositionsEquivalent);
+    const assignedMonthlyHours = group.reduce((s, r) => s + r.assignedMonthlyHours, 0);
+    return {
+      roleId,
+      roleName: group[0].roleName,
+      roleTypeId: group[0].roleTypeId,
+      requiredPositions,
+      requiredMonthlyHours,
+      assignedPositionsEquivalent,
+      assignedMonthlyHours,
+      deltaPositions:
+        requiredPositions != null && assignedPositionsEquivalent != null
+          ? assignedPositionsEquivalent - requiredPositions
+          : null,
+      deltaMonthlyHours: requiredMonthlyHours != null ? assignedMonthlyHours - requiredMonthlyHours : null,
+    };
+  });
+}
+
 /** A role's standard full-time WEEKLY hours, derived from the facility model's monthly standard.
  * Used to express one assignment's actual weekly hours as an occupancy percentage ("אחוזי משרה בפועל"). */
 export function weeklyFullTimeHoursForRole(roleId: string, facilityModelRoles: FacilityModelRole[]): number | null {

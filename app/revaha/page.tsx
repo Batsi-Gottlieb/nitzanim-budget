@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Banknote, Building2, ReceiptText, Users2, Wallet } from "lucide-react";
+import { Banknote, Building2, FileDown, ReceiptText, Users2, Wallet } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentRevahaProfile } from "@/lib/revaha/auth";
 import { computeFacilityBudget, addFacilityBudgets } from "@/lib/revaha/calc";
@@ -38,11 +38,20 @@ export default async function RevahaDashboardPage() {
 
     return (
       <div className="space-y-6">
-        <div className="rounded-2xl border border-slate-200 bg-white px-6 py-5 shadow-2xs">
-          <h1 className="text-xl font-black tracking-tight text-slate-900 sm:text-2xl">
-            {isAdmin ? "מערכת ניהול תקציב רווחה" : "תמונת מצב הלקוחות שלכם"}
-          </h1>
-          <p className="mt-1 text-sm text-slate-500">שלום{greetingName} 👋</p>
+        <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-6 py-5 shadow-2xs">
+          <div>
+            <h1 className="text-xl font-black tracking-tight text-slate-900 sm:text-2xl">
+              {isAdmin ? "מערכת ניהול תקציב רווחה" : "תמונת מצב הלקוחות שלכם"}
+            </h1>
+            <p className="mt-1 text-sm text-slate-500">שלום{greetingName} 👋</p>
+          </div>
+          <a
+            href="/api/revaha/staffing-report"
+            className="flex items-center gap-1.5 rounded-xl bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white shadow-xs transition-all hover:bg-indigo-700"
+          >
+            <FileDown className="h-3.5 w-3.5" />
+            ייצוא לאקסל — כל הרשת
+          </a>
         </div>
 
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5 sm:gap-4">
@@ -110,9 +119,18 @@ export default async function RevahaDashboardPage() {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-2xl border border-slate-200 bg-white px-6 py-5 shadow-2xs">
-        <h1 className="text-xl font-black tracking-tight text-slate-900 sm:text-2xl">תקציב מאוחד — כלל הפנימיות שלכם</h1>
-        <p className="mt-1 text-sm text-slate-500">שלום{greetingName} 👋</p>
+      <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-6 py-5 shadow-2xs">
+        <div>
+          <h1 className="text-xl font-black tracking-tight text-slate-900 sm:text-2xl">תקציב מאוחד — כלל הפנימיות שלכם</h1>
+          <p className="mt-1 text-sm text-slate-500">שלום{greetingName} 👋</p>
+        </div>
+        <a
+          href="/api/revaha/staffing-report"
+          className="flex items-center gap-1.5 rounded-xl bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white shadow-xs transition-all hover:bg-indigo-700"
+        >
+          <FileDown className="h-3.5 w-3.5" />
+          ייצוא לאקסל
+        </a>
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
