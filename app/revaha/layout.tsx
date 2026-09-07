@@ -21,15 +21,18 @@ export default async function RevahaLayout({ children }: { children: React.React
   const isImpersonating = !!verifySignedAdminId(cookieStore.get(REVAHA_IMPERSONATOR_COOKIE)?.value);
 
   let stats: { label: string; value: number; accent?: boolean }[];
+  let navCounts: { organizations?: number; resellerCompanies?: number; facilities?: number } = {};
   if (isAdmin) {
-    const [{ count: orgCount }, { count: facilityCount }] = await Promise.all([
+    const [{ count: orgCount }, { count: facilityCount }, { count: resellerCompanyCount }] = await Promise.all([
       supabase.from("organizations_revaha").select("*", { count: "exact", head: true }),
       supabase.from("facilities_revaha").select("*", { count: "exact", head: true }),
+      supabase.from("reseller_companies_revaha").select("*", { count: "exact", head: true }),
     ]);
     stats = [
       { label: "לקוחות", value: orgCount ?? 0 },
       { label: "פנימיות", value: facilityCount ?? 0, accent: true },
     ];
+    navCounts = { organizations: orgCount ?? 0, resellerCompanies: resellerCompanyCount ?? 0 };
   } else if (isCompanyRole) {
     const [{ count: orgCount }, { count: facilityCount }] = await Promise.all([
       supabase.from("organizations_revaha").select("*", { count: "exact", head: true }),
@@ -39,6 +42,7 @@ export default async function RevahaLayout({ children }: { children: React.React
       { label: "לקוחות", value: orgCount ?? 0 },
       { label: "פנימיות", value: facilityCount ?? 0, accent: true },
     ];
+    navCounts = { organizations: orgCount ?? 0 };
   } else {
     const { count: facilityCount } = profile.organization_id
       ? await supabase
@@ -47,6 +51,7 @@ export default async function RevahaLayout({ children }: { children: React.React
           .eq("organization_id", profile.organization_id)
       : { count: 0 };
     stats = [{ label: "פנימיות", value: facilityCount ?? 0, accent: true }];
+    navCounts = { facilities: facilityCount ?? 0 };
   }
 
   // Branding: super-admin gets the default revaha brand; everyone else inherits their reseller company's logo/name.
@@ -92,6 +97,7 @@ export default async function RevahaLayout({ children }: { children: React.React
           role={profile.role}
           fullName={profile.full_name}
           stats={stats}
+          navCounts={navCounts}
           companyName={companyName}
           companyLogoUrl={companyLogoUrl}
         />

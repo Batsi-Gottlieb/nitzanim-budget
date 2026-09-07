@@ -2,18 +2,21 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Briefcase, Database, LayoutDashboard, Library, ShieldCheck, Users, Wallet } from "lucide-react";
+import { Briefcase, ChevronLeft, Database, LayoutDashboard, Library, ShieldCheck, Users, Wallet } from "lucide-react";
 import type { RevahaRole } from "@/lib/revaha/types";
+
+type NavCountKey = "organizations" | "resellerCompanies" | "facilities";
 
 type NavItem = {
   href: string;
   title: string;
   subtitle: string;
   icon: React.ComponentType<{ className?: string }>;
-  badge?: string;
+  countKey?: NavCountKey;
 };
 
 type StatusStat = { label: string; value: number; accent?: boolean };
+type NavCounts = Partial<Record<NavCountKey, number>>;
 
 const ROLE_LABELS: Record<RevahaRole, string> = {
   admin: "Admin",
@@ -32,12 +35,14 @@ function navItemsForRole(role: RevahaRole): NavItem[] {
           title: "ניהול לקוחות ומשתמשים",
           subtitle: "ארגונים מפעילים, חשבונות כניסה",
           icon: Users,
+          countKey: "organizations",
         },
         {
           href: "/revaha/admin/reseller-companies",
           title: "לקוחות (חברות) מערכת",
           subtitle: "רואי חשבון ולקוחותיהם",
           icon: Briefcase,
+          countKey: "resellerCompanies",
         },
         {
           href: "/revaha/admin/base-data",
@@ -55,6 +60,7 @@ function navItemsForRole(role: RevahaRole): NavItem[] {
           title: "ניהול לקוחות ומשתמשים",
           subtitle: "ארגונים מפעילים, חשבונות כניסה",
           icon: Users,
+          countKey: "organizations",
         },
         {
           href: "/revaha/admin/base-data",
@@ -71,13 +77,20 @@ function navItemsForRole(role: RevahaRole): NavItem[] {
           title: "ניהול לקוחות ומשתמשים",
           subtitle: "ארגונים מפעילים, חשבונות כניסה",
           icon: Users,
+          countKey: "organizations",
         },
       ];
     case "org_user":
     default:
       return [
         { href: "/revaha", title: "לוח בקרה", subtitle: "תקציב מאוחד לכלל הפנימיות", icon: LayoutDashboard },
-        { href: "/revaha/org/facilities", title: "הפנימיות שלי", subtitle: "ניהול פנימיות ותקציבים", icon: Users },
+        {
+          href: "/revaha/org/facilities",
+          title: "הפנימיות שלי",
+          subtitle: "ניהול פנימיות ותקציבים",
+          icon: Users,
+          countKey: "facilities",
+        },
         { href: "/revaha/org/facility-models", title: "מודלי פנימיות", subtitle: "תקנים ותעריפים לכל מודל", icon: Library },
       ];
   }
@@ -87,12 +100,14 @@ export function RevahaSidebar({
   role,
   fullName,
   stats,
+  navCounts,
   companyName,
   companyLogoUrl,
 }: {
   role: RevahaRole;
   fullName: string | null;
   stats: StatusStat[];
+  navCounts?: NavCounts;
   companyName?: string | null;
   companyLogoUrl?: string | null;
 }) {
@@ -148,29 +163,51 @@ export function RevahaSidebar({
       <div className="flex-1 space-y-4 overflow-y-auto p-3">
         <div>
           <div className="px-3 pb-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">{menuLabel}</div>
-          <nav className="space-y-1" aria-label="ניווט">
+          <nav className="space-y-0.5" aria-label="ניווט">
             {navItems.map((item) => {
               const active = item.href === "/revaha" ? pathname === "/revaha" : pathname?.startsWith(item.href);
               const Icon = item.icon;
+              const count = item.countKey ? navCounts?.[item.countKey] : undefined;
               return (
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`flex w-full items-center justify-between gap-2.5 rounded-xl px-3 py-2.5 text-right transition-all ${
-                    active
-                      ? "border-r-4 border-r-indigo-600 bg-indigo-50/70 text-indigo-700"
-                      : "border border-slate-100 bg-white text-slate-700 hover:bg-slate-50 hover:text-slate-900"
+                  className={`group relative flex items-center gap-3 rounded-xl px-2.5 py-2.5 text-right transition-colors ${
+                    active ? "bg-indigo-50/80" : "hover:bg-slate-50"
                   }`}
                 >
-                  <div className="flex min-w-0 items-center gap-2.5">
-                    <span className="text-indigo-600">
+                  {active && <span className="absolute inset-y-1.5 right-0 w-1 rounded-full bg-indigo-600" />}
+
+                  <div className="relative shrink-0">
+                    <span
+                      className={`flex h-9 w-9 items-center justify-center rounded-xl transition-colors ${
+                        active
+                          ? "bg-indigo-600 text-white shadow-xs"
+                          : "bg-slate-100 text-slate-500 group-hover:bg-slate-200 group-hover:text-slate-700"
+                      }`}
+                    >
                       <Icon className="h-4 w-4" />
                     </span>
-                    <div className="min-w-0">
-                      <div className="truncate text-xs font-semibold leading-tight">{item.title}</div>
-                      <div className="mt-0.5 truncate text-[10px] leading-tight text-slate-400">{item.subtitle}</div>
-                    </div>
+                    {count !== undefined && count > 0 && (
+                      <span className="absolute -left-1.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full border-2 border-white bg-rose-500 px-1 text-[9px] font-bold leading-none text-white">
+                        {count}
+                      </span>
+                    )}
                   </div>
+
+                  <div className="min-w-0 flex-1">
+                    <div className={`truncate text-xs font-semibold leading-tight ${active ? "text-indigo-700" : "text-slate-700"}`}>
+                      {item.title}
+                    </div>
+                    <div className="mt-0.5 truncate text-[10px] leading-tight text-slate-400">{item.subtitle}</div>
+                  </div>
+
+                  {active && (
+                    <span className="shrink-0 rounded-full bg-indigo-100 px-1.5 py-0.5 text-[9px] font-bold text-indigo-600">
+                      עדכני
+                    </span>
+                  )}
+                  <ChevronLeft className="h-3.5 w-3.5 shrink-0 text-slate-300 transition-colors group-hover:text-slate-400" />
                 </Link>
               );
             })}
