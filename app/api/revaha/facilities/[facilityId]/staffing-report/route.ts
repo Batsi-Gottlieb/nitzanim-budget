@@ -55,7 +55,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ fac
 
   scheduleSheet.mergeCells(`A3:${matrixLastCol}3`);
   const weekendsNote = scheduleSheet.getCell("A3");
-  weekendsNote.value = `כמה סופי שבוע בחודש בממוצע: ${facility.weekends_per_month ?? DEFAULT_WEEKENDS_PER_MONTH} (לפיו מחושבות שעות שישי-שבת החודשיות)`;
+  weekendsNote.value = `ברירת מחדל לכמות סופ"שים בחודש (לפנימייה): ${facility.weekends_per_month ?? DEFAULT_WEEKENDS_PER_MONTH} — ניתן לקבוע כמות שונה לכל עובד ותפקיד (ראו גיליון "פירוט שכר ותעריפים")`;
   weekendsNote.font = { name: "Arial", size: 9, italic: true, color: { argb: "FF64748B" } };
   weekendsNote.alignment = { horizontal: "center" };
   scheduleSheet.getRow(3).height = 16;
@@ -177,24 +177,27 @@ export async function GET(_request: Request, { params }: { params: Promise<{ fac
     "שיטת שיבוץ",
     "שעות שבועיות א-ה",
     "שעות שבועיות שישי-שבת",
+    "כמות סופש\"ים לעובד בחודש",
     "שעות חודשיות",
     "תעריף שעתי אפקטיבי",
     "שכר חודשי",
   ]);
   styleHeaderRow(detailHeader);
-  detailSheet.autoFilter = { from: "A3", to: "H3" };
+  detailSheet.autoFilter = { from: "A3", to: "I3" };
 
   assignmentList.forEach((a, i) => {
     const role = rolesList.find((r) => r.id === a.role_id);
     const { weekday, weekend } = weeklyHourSplitForAssignment(a);
     const monthlyHours = monthlyHoursForAssignment(a, facility);
     const hourlyRate = assignmentHourlyRate(a);
+    const weekendOccurrences = a.weekend_occurrences_per_month ?? facility.weekends_per_month ?? DEFAULT_WEEKENDS_PER_MONTH;
     const dataRow = detailSheet.addRow([
       staffById.get(a.staff_id) ?? "?",
       role?.name ?? "?",
       SCHEDULE_METHOD_LABELS[a.schedule_method as ScheduleMethod],
       weekday,
       weekend,
+      weekendOccurrences,
       Math.round(monthlyHours * 10) / 10,
       Math.round(hourlyRate * 100) / 100,
       Math.round(assignmentMonthlyWage(a, facility)),
@@ -202,9 +205,10 @@ export async function GET(_request: Request, { params }: { params: Promise<{ fac
     styleDataRow(dataRow, i);
     dataRow.getCell(4).numFmt = "#,##0.0";
     dataRow.getCell(5).numFmt = "#,##0.0";
-    dataRow.getCell(6).numFmt = "#,##0.0";
-    dataRow.getCell(7).numFmt = '"₪"#,##0.00';
-    dataRow.getCell(8).numFmt = '"₪"#,##0';
+    dataRow.getCell(6).numFmt = "0.0";
+    dataRow.getCell(7).numFmt = "#,##0.0";
+    dataRow.getCell(8).numFmt = '"₪"#,##0.00';
+    dataRow.getCell(9).numFmt = '"₪"#,##0';
   });
 
   detailSheet.getColumn(1).width = 22;
@@ -212,9 +216,10 @@ export async function GET(_request: Request, { params }: { params: Promise<{ fac
   detailSheet.getColumn(3).width = 26;
   detailSheet.getColumn(4).width = 18;
   detailSheet.getColumn(5).width = 20;
-  detailSheet.getColumn(6).width = 16;
-  detailSheet.getColumn(7).width = 18;
-  detailSheet.getColumn(8).width = 16;
+  detailSheet.getColumn(6).width = 20;
+  detailSheet.getColumn(7).width = 16;
+  detailSheet.getColumn(8).width = 18;
+  detailSheet.getColumn(9).width = 16;
 
   applyArialFont(scheduleSheet);
   applyArialFont(summarySheet);

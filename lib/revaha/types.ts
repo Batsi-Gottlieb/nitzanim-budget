@@ -137,6 +137,10 @@ export type StaffRoleAssignment = {
   weekday_hours: number | null;
   weekend_hours: number | null;
   daily_shifts: DailyShifts | null;
+  /** How many Fri+Sat weekends THIS employee actually works per month, in this role — not every
+   * employee works every weekend. Falls back to the facility's own weekends_per_month, then to
+   * the global default, when left blank. */
+  weekend_occurrences_per_month: number | null;
 };
 
 export type FacilityExpenseLineItem = {

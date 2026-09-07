@@ -39,14 +39,14 @@ export function weeklyHoursForAssignment(assignment: StaffRoleAssignment): numbe
 
 /**
  * Monthly hours for one role assignment: the weekday portion scales with the average number of
- * weeks per month, the weekend portion scales with the facility's own average number of weekends
- * (Fri+Sat occurrences) per month — not every facility staffs every single weekend. Facilities
- * without an explicit value fall back to 4.3 (one every week), which reproduces the previous
- * flat-4.3-for-everything behavior exactly.
+ * weeks per month, the weekend portion scales with how many Fri+Sat weekends THIS employee
+ * actually works per month in this role — not every employee works every weekend. Falls back to
+ * the facility's own average when left blank on the assignment, then to 4.3 (one every week),
+ * which reproduces the original flat-4.3-for-everything behavior exactly.
  */
 export function monthlyHoursForAssignment(assignment: StaffRoleAssignment, facility: Pick<Facility, "weekends_per_month">): number {
   const { weekday, weekend } = weeklyHourSplitForAssignment(assignment);
-  const weekendsPerMonth = facility.weekends_per_month ?? DEFAULT_WEEKENDS_PER_MONTH;
+  const weekendsPerMonth = assignment.weekend_occurrences_per_month ?? facility.weekends_per_month ?? DEFAULT_WEEKENDS_PER_MONTH;
   return weekday * AVG_WEEKS_PER_MONTH + weekend * weekendsPerMonth;
 }
 

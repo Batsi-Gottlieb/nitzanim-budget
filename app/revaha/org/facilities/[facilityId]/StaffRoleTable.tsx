@@ -37,6 +37,7 @@ type Assignment = {
   schedule_method: ScheduleMethod;
   weekday_hours: number | null;
   weekend_hours: number | null;
+  weekend_occurrences_per_month: number | null;
   daily_shifts: DailyShifts | null;
 };
 
@@ -98,6 +99,7 @@ function AssignmentEditForm({
         defaultWeekdayHours={assignment.weekday_hours}
         defaultWeekendHours={assignment.weekend_hours}
         defaultDailyShifts={assignment.daily_shifts}
+        defaultWeekendOccurrencesPerMonth={assignment.weekend_occurrences_per_month}
       />
       <div className="flex gap-2">
         <button

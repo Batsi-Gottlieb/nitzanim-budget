@@ -44,6 +44,7 @@ function cellTimeString(value: ExcelJS.CellValue): string {
 
 function parseScheduleFromForm(formData: FormData, prefix = "") {
   const method = (formData.get(`${prefix}schedule_method`) as string) || "consolidated";
+  const weekend_occurrences_per_month = num(formData, `${prefix}weekend_occurrences_per_month`);
   if (method === "detailed") {
     const daily_shifts: Record<string, { start: string; end: string }> = {};
     for (let i = 0; i < 7; i++) {
@@ -51,12 +52,13 @@ function parseScheduleFromForm(formData: FormData, prefix = "") {
       const end = formData.get(`${prefix}shift_${i}_end`) as string;
       if (start && end) daily_shifts[String(i)] = { start, end };
     }
-    return { schedule_method: "detailed" as const, weekday_hours: null, weekend_hours: null, daily_shifts };
+    return { schedule_method: "detailed" as const, weekday_hours: null, weekend_hours: null, weekend_occurrences_per_month, daily_shifts };
   }
   return {
     schedule_method: "consolidated" as const,
     weekday_hours: num(formData, `${prefix}weekday_hours`),
     weekend_hours: num(formData, `${prefix}weekend_hours`),
+    weekend_occurrences_per_month,
     daily_shifts: null,
   };
 }
@@ -284,7 +286,7 @@ type ImportRow = {
   monthly_travel: number | null;
   has_training_fund: boolean;
   employment_type: "שכיר" | "עצמאי";
-  weekends_per_month: number | null;
+  weekendOccurrencesPerMonth: number | null;
 };
 
 const DAY_GRID_START_COL = 10; // columns 10..23: 7 days * (start,end)
@@ -344,7 +346,7 @@ export async function importStaffFromExcel(facilityId: string, formData: FormDat
       monthly_travel: cellNumber(row.getCell(27).value),
       has_training_fund: trainingFundRaw.includes("כן"),
       employment_type: employmentTypeRaw.includes("עצמאי") ? "עצמאי" : "שכיר",
-      weekends_per_month: cellNumber(row.getCell(30).value),
+      weekendOccurrencesPerMonth: cellNumber(row.getCell(30).value),
     });
   });
 
@@ -352,14 +354,6 @@ export async function importStaffFromExcel(facilityId: string, formData: FormDat
 
   const supabase = await createClient();
   const warnings: string[] = [];
-
-  const weekendsPerMonth = rows.find((r) => r.weekends_per_month !== null)?.weekends_per_month ?? null;
-  if (weekendsPerMonth !== null) {
-    await supabase
-      .from("facilities_revaha")
-      .update({ weekends_per_month: weekendsPerMonth })
-      .eq("id", facilityId);
-  }
 
   const { data: roles } = await supabase.from("roles_revaha").select("id, name");
   const roleIdByName = new Map((roles ?? []).map((r) => [r.name.trim(), r.id as string]));
@@ -419,6 +413,7 @@ export async function importStaffFromExcel(facilityId: string, formData: FormDat
         schedule_method: row.scheduleMethodLabel === SCHEDULE_METHOD_LABELS.detailed ? "detailed" : "consolidated",
         weekday_hours: row.weekday_hours,
         weekend_hours: row.weekend_hours,
+        weekend_occurrences_per_month: row.weekendOccurrencesPerMonth,
         daily_shifts: Object.keys(row.daily_shifts).length ? row.daily_shifts : null,
       });
     }

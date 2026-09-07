@@ -96,7 +96,7 @@ export async function GET() {
   const facilityHeader = facilitySheet.addRow([
     "פנימייה",
     "מס' עובדים",
-    "סופי שבוע בחודש בממוצע",
+    "ברירת מחדל לסופ\"שים בחודש (פנימייה)",
     "שכר חודשי",
     "תוספות ונסיעות",
     "הוצאות שוטפות",
@@ -120,7 +120,7 @@ export async function GET() {
   });
   facilitySheet.getColumn(1).width = 24;
   facilitySheet.getColumn(2).width = 12;
-  facilitySheet.getColumn(3).width = 16;
+  facilitySheet.getColumn(3).width = 26;
   for (let c = 4; c <= 7; c++) facilitySheet.getColumn(c).width = 18;
 
   // ---- Sheet 2: שיבוץ עובדים — כל הרשת (role-type header + day-by-day matrix, all facilities) ----
@@ -250,12 +250,13 @@ export async function GET() {
     "שיטת שיבוץ",
     "שעות שבועיות א-ה",
     "שעות שבועיות שישי-שבת",
+    "כמות סופש\"ים לעובד בחודש",
     "שעות חודשיות",
     "תעריף שעתי אפקטיבי",
     "שכר חודשי",
   ]);
   styleHeaderRow(detailHeader);
-  detailSheet.autoFilter = { from: "A3", to: "I3" };
+  detailSheet.autoFilter = { from: "A3", to: "J3" };
 
   assignmentList.forEach((a, i) => {
     const facilityId = staffFacilityById.get(a.staff_id);
@@ -265,6 +266,7 @@ export async function GET() {
     const { weekday, weekend } = weeklyHourSplitForAssignment(a);
     const monthlyHours = monthlyHoursForAssignment(a, facility);
     const hourlyRate = assignmentHourlyRate(a);
+    const weekendOccurrences = a.weekend_occurrences_per_month ?? facility.weekends_per_month ?? DEFAULT_WEEKENDS_PER_MONTH;
     const dataRow = detailSheet.addRow([
       facility.name,
       staffById.get(a.staff_id) ?? "?",
@@ -272,6 +274,7 @@ export async function GET() {
       SCHEDULE_METHOD_LABELS[a.schedule_method as ScheduleMethod],
       weekday,
       weekend,
+      weekendOccurrences,
       Math.round(monthlyHours * 10) / 10,
       Math.round(hourlyRate * 100) / 100,
       Math.round(assignmentMonthlyWage(a, facility)),
@@ -279,9 +282,10 @@ export async function GET() {
     styleDataRow(dataRow, i);
     dataRow.getCell(5).numFmt = "#,##0.0";
     dataRow.getCell(6).numFmt = "#,##0.0";
-    dataRow.getCell(7).numFmt = "#,##0.0";
-    dataRow.getCell(8).numFmt = '"₪"#,##0.00';
-    dataRow.getCell(9).numFmt = '"₪"#,##0';
+    dataRow.getCell(7).numFmt = "0.0";
+    dataRow.getCell(8).numFmt = "#,##0.0";
+    dataRow.getCell(9).numFmt = '"₪"#,##0.00';
+    dataRow.getCell(10).numFmt = '"₪"#,##0';
   });
 
   detailSheet.getColumn(1).width = 20;
@@ -290,9 +294,10 @@ export async function GET() {
   detailSheet.getColumn(4).width = 26;
   detailSheet.getColumn(5).width = 18;
   detailSheet.getColumn(6).width = 20;
-  detailSheet.getColumn(7).width = 16;
-  detailSheet.getColumn(8).width = 18;
-  detailSheet.getColumn(9).width = 16;
+  detailSheet.getColumn(7).width = 20;
+  detailSheet.getColumn(8).width = 16;
+  detailSheet.getColumn(9).width = 18;
+  detailSheet.getColumn(10).width = 16;
 
   applyArialFont(facilitySheet);
   applyArialFont(scheduleSheet);

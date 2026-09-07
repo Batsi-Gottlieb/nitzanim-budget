@@ -35,6 +35,7 @@ type Assignment = {
   schedule_method: ScheduleMethod;
   weekday_hours: number | null;
   weekend_hours: number | null;
+  weekend_occurrences_per_month: number | null;
   daily_shifts: DailyShifts | null;
 };
 type ExpenseLineItem = { id: string; monthly_amount: number | null };

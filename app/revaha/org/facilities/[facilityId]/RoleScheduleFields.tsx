@@ -9,6 +9,7 @@ export function RoleScheduleFields({
   defaultWeekdayHours,
   defaultWeekendHours,
   defaultDailyShifts,
+  defaultWeekendOccurrencesPerMonth,
 }: {
   roleName?: string;
   namePrefix?: string;
@@ -16,6 +17,7 @@ export function RoleScheduleFields({
   defaultWeekdayHours?: number | null;
   defaultWeekendHours?: number | null;
   defaultDailyShifts?: DailyShifts | null;
+  defaultWeekendOccurrencesPerMonth?: number | null;
 }) {
   const [method, setMethod] = useState<ScheduleMethod>(defaultMethod);
   const field = (name: string) => `${namePrefix}${name}`;
@@ -41,6 +43,18 @@ export function RoleScheduleFields({
           </button>
         </div>
         <input type="hidden" name={field("schedule_method")} value={method} />
+      </div>
+
+      <div>
+        <label className="mb-1 block text-[11px] text-slate-500">כמות סופ&quot;שים לעובד בחודש</label>
+        <input
+          name={field("weekend_occurrences_per_month")}
+          type="number"
+          step="0.1"
+          placeholder="ברירת מחדל של הפנימייה"
+          defaultValue={defaultWeekendOccurrencesPerMonth ?? ""}
+          className="w-48 rounded-lg border border-slate-200 px-2 py-1 text-sm"
+        />
       </div>
 
       {method === "consolidated" ? (
