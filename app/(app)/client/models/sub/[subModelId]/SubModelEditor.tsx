@@ -82,6 +82,7 @@ export function SubModelEditor({
   yearGeneral,
   lineItems: initialLineItems,
   defaultIncome,
+  maxParentPriceNoCamp,
 }: {
   subModelId: string;
   clientId: string;
@@ -90,6 +91,7 @@ export function SubModelEditor({
   yearGeneral: YearGeneralRow[];
   lineItems: BudgetLineItem[];
   defaultIncome: { participant: number; ministry: number } | null;
+  maxParentPriceNoCamp: number | null;
 }) {
   const [subModel, setSubModel] = useState(initialSubModel);
   const [months, setMonths] = useState(initialMonths);
@@ -200,6 +202,15 @@ export function SubModelEditor({
 
   return (
     <div className="space-y-8">
+      {maxParentPriceNoCamp !== null && (
+        <section className="rounded-2xl border border-border bg-surface-muted p-4">
+          <span className="text-xs font-medium text-foreground-muted">מחיר מקסימום לגביית הורים (ללא קייטנות)</span>
+          <div className="mt-1 text-xl font-bold tabular-nums">₪{fmt(maxParentPriceNoCamp)}</div>
+          <p className="mt-0.5 text-[11px] text-foreground-muted">
+            מחיר מקסימום ללא קייטנות בקיזוז הכנסת משרד החינוך למשתתף לחודש
+          </p>
+        </section>
+      )}
       <section className="rounded-2xl border border-border bg-surface p-5">
         <h2 className="mb-3 text-sm font-semibold">הגדרות מודל משנה</h2>
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">

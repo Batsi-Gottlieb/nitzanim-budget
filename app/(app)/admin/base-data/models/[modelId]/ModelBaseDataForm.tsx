@@ -18,6 +18,9 @@ const FIELDS: { key: keyof ModelBaseData; label: string }[] = [
   { key: "max_clubs", label: "מקסימום חוגים" },
   { key: "training_hours", label: "שעות הכשרה" },
   { key: "overhead_monthly_amount", label: "תקורה חודשית (₪)" },
+  { key: "feeding_portion_price_tender", label: "מחיר מנת הזנה קול קורא" },
+  { key: "annual_consumables_cost", label: "מתכלים שנתי" },
+  { key: "enrichment_club_session_cost", label: "עלות חוג בודד העשרה" },
 ];
 
 export function ModelBaseDataForm({

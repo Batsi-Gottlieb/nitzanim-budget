@@ -120,6 +120,27 @@ export async function createSubModel(formData: FormData) {
       income_monthly_override: lamasIncome?.ministry_income_monthly ?? null,
       source: "base_default",
     },
+    {
+      sub_model_id: subModel.id,
+      client_id: clientId,
+      item_type: "הזנה",
+      meal_cost: baseData?.feeding_portion_price_tender ?? 0,
+      source: "base_default",
+    },
+    {
+      sub_model_id: subModel.id,
+      client_id: clientId,
+      item_type: "מתכלים",
+      annual_cost: baseData?.annual_consumables_cost ?? 0,
+      source: "base_default",
+    },
+    {
+      sub_model_id: subModel.id,
+      client_id: clientId,
+      item_type: "חוג_העשרה",
+      session_cost: baseData?.enrichment_club_session_cost ?? 0,
+      source: "base_default",
+    },
   ];
 
   await supabase.from("budget_line_items").insert([...wageRows, ...otherRows]);

@@ -42,6 +42,7 @@ export function LamasTable({ yearId, modelId, initial }: { yearId: string; model
             <th className="px-4 py-3 font-semibold">דרג למ&quot;ס</th>
             <th className="px-4 py-3 font-semibold">הכנסה למשתתף לחודש</th>
             <th className="px-4 py-3 font-semibold">הכנסת משרד החינוך למשתתף לחודש</th>
+            <th className="px-4 py-3 font-semibold">סך מחיר בסיס ללמ&quot;ס לתלמיד</th>
           </tr>
         </thead>
         <tbody>
@@ -65,6 +66,11 @@ export function LamasTable({ yearId, modelId, initial }: { yearId: string; model
                   onChange={(e) => update(r.lamas_level, "ministry_income_monthly", Number(e.target.value))}
                   className="w-32 rounded-md border border-border px-2 py-1"
                 />
+              </td>
+              <td className="px-4 py-2 font-semibold tabular-nums">
+                {(r.participant_income_monthly + r.ministry_income_monthly).toLocaleString("he-IL", {
+                  maximumFractionDigits: 2,
+                })}
               </td>
             </tr>
           ))}

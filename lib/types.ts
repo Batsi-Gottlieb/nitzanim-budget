@@ -6,6 +6,11 @@ export type Year = {
   start_date: string;
   end_date: string;
   is_active: boolean;
+  /** "מחיר מקסימום ללא/כולל קייטנות" לגנים ולבתי ספר — למילוי ידני, משמשים לחישוב מחיר המקסימום לגביית הורים בכל מודל משנה. */
+  max_price_no_camp_gardens: number | null;
+  max_price_with_camp_gardens: number | null;
+  max_price_no_camp_schools: number | null;
+  max_price_with_camp_schools: number | null;
 };
 
 export const MONTHS: { calendar_month: number; month_order: number; label: string }[] = [
@@ -54,6 +59,12 @@ export type ModelBaseData = {
   max_clubs: number;
   training_hours: number;
   overhead_monthly_amount: number;
+  /** "מחיר מנת הזנה קול קורא" — ברירת המחדל לסעיף "הזנה" בעת יצירת מודל משנה. */
+  feeding_portion_price_tender: number;
+  /** "מתכלים שנתי" — ברירת המחדל לסעיף "מתכלים" בעת יצירת מודל משנה. */
+  annual_consumables_cost: number;
+  /** "עלות חוג בודד העשרה" — ברירת המחדל לסעיף "חוג_העשרה" בעת יצירת מודל משנה. */
+  enrichment_club_session_cost: number;
 };
 
 export type ModelLamasIncome = {

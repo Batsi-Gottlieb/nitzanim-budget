@@ -14,30 +14,36 @@ export default async function SubModelPage({ params }: { params: Promise<{ subMo
     .select("*, models(*), client_years(year_id, lamas_level)")
     .eq("id", subModel.client_model_id)
     .single();
-  const model = clientModel.models as unknown as { id: string; name: string };
+  const model = clientModel.models as unknown as { id: string; name: string; category: "גנים" | "בתי_ספר" };
   const { year_id: yearId, lamas_level: lamasLevel } = clientModel.client_years as unknown as {
     year_id: string;
     lamas_level: number | null;
   };
 
-  const [{ data: months }, { data: yearGeneral }, { data: lineItems }, { data: lamasIncome }] = await Promise.all([
-    supabase.from("sub_model_months").select("*").eq("sub_model_id", subModelId).order("month_order"),
-    supabase.from("year_general_data").select("*").eq("year_id", yearId).order("month_order"),
-    supabase.from("budget_line_items").select("*").eq("sub_model_id", subModelId),
-    lamasLevel
-      ? supabase
-          .from("model_lamas_income")
-          .select("*")
-          .eq("year_id", yearId)
-          .eq("model_id", model.id)
-          .eq("lamas_level", lamasLevel)
-          .maybeSingle()
-      : Promise.resolve({ data: null }),
-  ]);
+  const [{ data: months }, { data: yearGeneral }, { data: lineItems }, { data: lamasIncome }, { data: year }] =
+    await Promise.all([
+      supabase.from("sub_model_months").select("*").eq("sub_model_id", subModelId).order("month_order"),
+      supabase.from("year_general_data").select("*").eq("year_id", yearId).order("month_order"),
+      supabase.from("budget_line_items").select("*").eq("sub_model_id", subModelId),
+      lamasLevel
+        ? supabase
+            .from("model_lamas_income")
+            .select("*")
+            .eq("year_id", yearId)
+            .eq("model_id", model.id)
+            .eq("lamas_level", lamasLevel)
+            .maybeSingle()
+        : Promise.resolve({ data: null }),
+      supabase.from("years").select("*").eq("id", yearId).maybeSingle(),
+    ]);
 
   const defaultIncome = lamasIncome
     ? { participant: lamasIncome.participant_income_monthly, ministry: lamasIncome.ministry_income_monthly }
     : null;
+
+  const maxPriceNoCamp =
+    (model.category === "גנים" ? year?.max_price_no_camp_gardens : year?.max_price_no_camp_schools) ?? null;
+  const maxParentPriceNoCamp = maxPriceNoCamp !== null ? maxPriceNoCamp - (defaultIncome?.ministry ?? 0) : null;
 
   return (
     <div className="max-w-6xl space-y-6">
@@ -61,6 +67,7 @@ export default async function SubModelPage({ params }: { params: Promise<{ subMo
         yearGeneral={yearGeneral ?? []}
         lineItems={lineItems ?? []}
         defaultIncome={defaultIncome}
+        maxParentPriceNoCamp={maxParentPriceNoCamp}
       />
     </div>
   );

@@ -24,6 +24,9 @@ export async function saveModelBaseData(yearId: string, modelId: string, formDat
       max_clubs: num("max_clubs"),
       training_hours: num("training_hours"),
       overhead_monthly_amount: num("overhead_monthly_amount"),
+      feeding_portion_price_tender: num("feeding_portion_price_tender"),
+      annual_consumables_cost: num("annual_consumables_cost"),
+      enrichment_club_session_cost: num("enrichment_club_session_cost"),
     },
     { onConflict: "year_id,model_id" }
   );

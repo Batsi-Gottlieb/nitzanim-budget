@@ -21,6 +21,24 @@ export async function saveGeneralData(yearId: string, formData: FormData) {
   revalidatePath("/admin/base-data");
 }
 
+export async function saveMaxPrices(yearId: string, formData: FormData) {
+  const supabase = await createClient();
+  const num = (key: string) => {
+    const v = formData.get(key);
+    return v === null || v === "" ? null : Number(v);
+  };
+  await supabase
+    .from("years")
+    .update({
+      max_price_no_camp_gardens: num("max_price_no_camp_gardens"),
+      max_price_with_camp_gardens: num("max_price_with_camp_gardens"),
+      max_price_no_camp_schools: num("max_price_no_camp_schools"),
+      max_price_with_camp_schools: num("max_price_with_camp_schools"),
+    })
+    .eq("id", yearId);
+  revalidatePath("/admin/base-data");
+}
+
 export async function createModel(formData: FormData) {
   const supabase = await createClient();
   const code = formData.get("code") as string;

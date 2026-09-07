@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { GeneralDataForm } from "./GeneralDataForm";
+import { MaxPricesForm } from "./MaxPricesForm";
 import { createModel } from "./actions";
 
 export default async function BaseDataPage() {
@@ -24,6 +25,7 @@ export default async function BaseDataPage() {
         <section>
           <h2 className="mb-3 text-lg font-semibold">נתונים כלליים שנתיים</h2>
           <GeneralDataForm yearId={activeYear.id} initial={generalData ?? []} />
+          <MaxPricesForm yearId={activeYear.id} initial={activeYear} />
         </section>
       )}
 
