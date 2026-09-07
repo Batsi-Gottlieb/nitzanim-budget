@@ -5,9 +5,11 @@ import { getCurrentRevahaProfile } from "@/lib/revaha/auth";
 import {
   addFacilityBudgets,
   addFacilityIncomes,
+  addRoleTypeEmployerCosts,
   computeFacilityBudget,
   computeFacilityIncome,
   computeProfitLoss,
+  facilityEmployerCostByRoleType,
   facilityEmployerCostMonthly,
 } from "@/lib/revaha/calc";
 import { KpiCard } from "@/components/revaha/KpiCard";
@@ -34,6 +36,8 @@ export default async function RevahaDashboardPage() {
       { data: expenses },
       { data: facilityModels },
       { data: incomeRateCategories },
+      { data: roles },
+      { data: roleTypes },
     ] = await Promise.all([
       supabase.from("organizations_revaha").select("*", { count: "exact", head: true }),
       supabase.from("facilities_revaha").select("*"),
@@ -42,6 +46,8 @@ export default async function RevahaDashboardPage() {
       supabase.from("facility_expense_line_items_revaha").select("*"),
       supabase.from("facility_models_revaha").select("*"),
       supabase.from("income_rate_categories_revaha").select("*"),
+      supabase.from("roles_revaha").select("*"),
+      supabase.from("role_types_revaha").select("id, name"),
     ]);
 
     const facilityModelById = new Map((facilityModels ?? []).map((m) => [m.id, m]));
@@ -59,13 +65,23 @@ export default async function RevahaDashboardPage() {
         computeFacilityIncome(f, facilityModelById.get(f.facility_model_id ?? ""), incomeRateCategories ?? [])
       )
     );
+    const rolesList = roles ?? [];
+    const roleTypesList = roleTypes ?? [];
     const totalWageEmployerCost = (facilities ?? []).reduce((sum, f) => {
       const fStaff = (staff ?? []).filter((s) => s.facility_id === f.id);
       const fStaffIds = new Set(fStaff.map((s) => s.id));
       const fAssignments = (assignments ?? []).filter((a) => fStaffIds.has(a.staff_id));
       return sum + facilityEmployerCostMonthly(fStaff, fAssignments, f);
     }, 0);
-    const profitLoss = computeProfitLoss(totalIncome, totalWageEmployerCost, total.expensesMonthly);
+    const totalWageByRoleType = addRoleTypeEmployerCosts(
+      (facilities ?? []).map((f) => {
+        const fStaff = (staff ?? []).filter((s) => s.facility_id === f.id);
+        const fStaffIds = new Set(fStaff.map((s) => s.id));
+        const fAssignments = (assignments ?? []).filter((a) => fStaffIds.has(a.staff_id));
+        return facilityEmployerCostByRoleType(fStaff, fAssignments, f, rolesList, roleTypesList);
+      })
+    );
+    const profitLoss = computeProfitLoss(totalIncome, totalWageEmployerCost, total.expensesMonthly, totalWageByRoleType);
 
     return (
       <div className="space-y-6">
@@ -121,23 +137,32 @@ export default async function RevahaDashboardPage() {
 
   const facilityIds = (facilities ?? []).map((f) => f.id);
 
-  const [{ data: staff }, { data: assignments }, { data: expenses }, { data: facilityModels }, { data: incomeRateCategories }] =
-    await Promise.all([
-      facilityIds.length
-        ? supabase.from("staff_revaha").select("*").in("facility_id", facilityIds)
-        : Promise.resolve({ data: [] }),
-      facilityIds.length
-        ? supabase
-            .from("staff_role_assignments_revaha")
-            .select("*, staff_revaha!inner(facility_id)")
-            .in("staff_revaha.facility_id", facilityIds)
-        : Promise.resolve({ data: [] }),
-      facilityIds.length
-        ? supabase.from("facility_expense_line_items_revaha").select("*").in("facility_id", facilityIds)
-        : Promise.resolve({ data: [] }),
-      supabase.from("facility_models_revaha").select("*"),
-      supabase.from("income_rate_categories_revaha").select("*"),
-    ]);
+  const [
+    { data: staff },
+    { data: assignments },
+    { data: expenses },
+    { data: facilityModels },
+    { data: incomeRateCategories },
+    { data: roles },
+    { data: roleTypes },
+  ] = await Promise.all([
+    facilityIds.length
+      ? supabase.from("staff_revaha").select("*").in("facility_id", facilityIds)
+      : Promise.resolve({ data: [] }),
+    facilityIds.length
+      ? supabase
+          .from("staff_role_assignments_revaha")
+          .select("*, staff_revaha!inner(facility_id)")
+          .in("staff_revaha.facility_id", facilityIds)
+      : Promise.resolve({ data: [] }),
+    facilityIds.length
+      ? supabase.from("facility_expense_line_items_revaha").select("*").in("facility_id", facilityIds)
+      : Promise.resolve({ data: [] }),
+    supabase.from("facility_models_revaha").select("*"),
+    supabase.from("income_rate_categories_revaha").select("*"),
+    supabase.from("roles_revaha").select("*"),
+    supabase.from("role_types_revaha").select("id, name"),
+  ]);
 
   const facilityModelById = new Map((facilityModels ?? []).map((m) => [m.id, m]));
   const summaries = (facilities ?? []).map((f) => {
@@ -156,13 +181,23 @@ export default async function RevahaDashboardPage() {
   const totalIncome = addFacilityIncomes(
     (facilities ?? []).map((f) => computeFacilityIncome(f, facilityModelById.get(f.facility_model_id ?? ""), incomeRateCategories ?? []))
   );
+  const rolesList = roles ?? [];
+  const roleTypesList = roleTypes ?? [];
   const totalWageEmployerCost = (facilities ?? []).reduce((sum, f) => {
     const fStaff = (staff ?? []).filter((s) => s.facility_id === f.id);
     const fStaffIds = new Set(fStaff.map((s) => s.id));
     const fAssignments = (assignments ?? []).filter((a) => fStaffIds.has(a.staff_id));
     return sum + facilityEmployerCostMonthly(fStaff, fAssignments, f);
   }, 0);
-  const profitLoss = computeProfitLoss(totalIncome, totalWageEmployerCost, total.expensesMonthly);
+  const totalWageByRoleType = addRoleTypeEmployerCosts(
+    (facilities ?? []).map((f) => {
+      const fStaff = (staff ?? []).filter((s) => s.facility_id === f.id);
+      const fStaffIds = new Set(fStaff.map((s) => s.id));
+      const fAssignments = (assignments ?? []).filter((a) => fStaffIds.has(a.staff_id));
+      return facilityEmployerCostByRoleType(fStaff, fAssignments, f, rolesList, roleTypesList);
+    })
+  );
+  const profitLoss = computeProfitLoss(totalIncome, totalWageEmployerCost, total.expensesMonthly, totalWageByRoleType);
 
   return (
     <div className="space-y-6">

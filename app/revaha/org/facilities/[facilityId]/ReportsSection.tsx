@@ -4,6 +4,7 @@ import { FileDown } from "lucide-react";
 import {
   computeFacilityIncome,
   computeProfitLoss,
+  facilityEmployerCostByRoleType,
   facilityEmployerCostMonthly,
   roleStaffingSummary,
   roleTypeStaffingSummary,
@@ -123,8 +124,9 @@ export function ReportsSection({
 
   const income = computeFacilityIncome(facility, facilityModel, incomeRateCategories);
   const wageMonthly = facilityEmployerCostMonthly(staff, assignments, facility);
+  const wageByRoleType = facilityEmployerCostByRoleType(staff, assignments, facility, roles, roleTypes);
   const expensesMonthly = expenses.reduce((sum, e) => sum + (e.monthly_amount ?? 0), 0);
-  const profitLoss = computeProfitLoss(income, wageMonthly, expensesMonthly);
+  const profitLoss = computeProfitLoss(income, wageMonthly, expensesMonthly, wageByRoleType);
 
   return (
     <section className="space-y-4">

@@ -169,9 +169,75 @@ export function addFacilityIncomes(summaries: FacilityIncomeSummary[]): Facility
   );
 }
 
+export type RoleTypeEmployerCostRow = {
+  roleTypeId: string;
+  roleTypeName: string;
+  employerCostMonthly: number;
+};
+
+/**
+ * Breaks facilityEmployerCostMonthly's total down by role TYPE, for the profit & loss report.
+ * Employer cost is computed once per staff member (see staffEmployerCostMonthly) since fixed
+ * additions/travel/training-fund apply to the person, not a specific role — so a person holding
+ * several roles has their total cost split across those roles' types in proportion to each
+ * role's own share of their gross salary. If a person's gross salary is zero across the board
+ * (e.g. only fixed additions), their cost is split evenly across their role types instead, and a
+ * person with no role at all is bucketed under "ללא תפקיד" — so the breakdown always sums to
+ * exactly facilityEmployerCostMonthly's total.
+ */
+export function facilityEmployerCostByRoleType(
+  staffList: Pick<Staff, "id" | "monthly_addition" | "monthly_travel" | "has_training_fund" | "employment_type">[],
+  assignments: StaffRoleAssignment[],
+  facility: Pick<Facility, "weekends_per_month">,
+  roles: Pick<Role, "id" | "role_type_id">[],
+  roleTypes: Pick<RoleType, "id" | "name">[]
+): RoleTypeEmployerCostRow[] {
+  const roleTypeIdByRoleId = new Map(roles.map((r) => [r.id, r.role_type_id]));
+  const costByType = new Map<string, number>();
+  const addCost = (roleTypeId: string, amount: number) => {
+    costByType.set(roleTypeId, (costByType.get(roleTypeId) ?? 0) + amount);
+  };
+
+  for (const staff of staffList) {
+    const staffAssignments = assignments.filter((a) => a.staff_id === staff.id);
+    const totalCost = staffEmployerCostMonthly(staff, assignments, facility);
+    if (staffAssignments.length === 0) {
+      addCost("", totalCost);
+      continue;
+    }
+    const grossTotal = staffAssignments.reduce((sum, a) => sum + assignmentMonthlyWage(a, facility), 0);
+    for (const a of staffAssignments) {
+      const roleTypeId = roleTypeIdByRoleId.get(a.role_id) ?? "";
+      const share = grossTotal > 0 ? assignmentMonthlyWage(a, facility) / grossTotal : 1 / staffAssignments.length;
+      addCost(roleTypeId, totalCost * share);
+    }
+  }
+
+  return Array.from(costByType.entries()).map(([roleTypeId, employerCostMonthly]) => ({
+    roleTypeId,
+    roleTypeName: roleTypeId ? roleTypes.find((rt) => rt.id === roleTypeId)?.name ?? "?" : "ללא תפקיד",
+    employerCostMonthly,
+  }));
+}
+
+/** Merges per-facility facilityEmployerCostByRoleType results into one row per role type across
+ * the whole network. */
+export function addRoleTypeEmployerCosts(perFacility: RoleTypeEmployerCostRow[][]): RoleTypeEmployerCostRow[] {
+  const byType = new Map<string, RoleTypeEmployerCostRow>();
+  for (const rows of perFacility) {
+    for (const row of rows) {
+      const existing = byType.get(row.roleTypeId);
+      if (existing) existing.employerCostMonthly += row.employerCostMonthly;
+      else byType.set(row.roleTypeId, { ...row });
+    }
+  }
+  return Array.from(byType.values());
+}
+
 export type ProfitLossSummary = {
   income: FacilityIncomeSummary;
   wageMonthly: number;
+  wageByRoleType: RoleTypeEmployerCostRow[];
   expensesMonthly: number;
   totalCostsMonthly: number;
   netMonthly: number;
@@ -184,12 +250,18 @@ export type ProfitLossSummary = {
  * (see facilityEmployerCostMonthly, NOT gross salary) plus general operating expenses. Annual
  * figures are simply the monthly ones times 12, matching how the reference model itself projects
  * a "צפי שנתי" from its "חודש ממוצע" columns. */
-export function computeProfitLoss(income: FacilityIncomeSummary, wageMonthly: number, expensesMonthly: number): ProfitLossSummary {
+export function computeProfitLoss(
+  income: FacilityIncomeSummary,
+  wageMonthly: number,
+  expensesMonthly: number,
+  wageByRoleType: RoleTypeEmployerCostRow[] = []
+): ProfitLossSummary {
   const totalCostsMonthly = wageMonthly + expensesMonthly;
   const netMonthly = income.totalIncomeMonthly - totalCostsMonthly;
   return {
     income,
     wageMonthly,
+    wageByRoleType,
     expensesMonthly,
     totalCostsMonthly,
     netMonthly,
