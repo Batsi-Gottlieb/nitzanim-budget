@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { BudgetLineItem, MONTHS, SubModel, SubModelMonth } from "@/lib/types";
-import { computeSubModelBudget, summarizeForReport } from "@/lib/calc";
+import { computeSubModelBudget, isIncomeItemType, summarizeForReport } from "@/lib/calc";
 import {
   addLineItem,
   deleteLineItem,
@@ -199,6 +199,16 @@ export function SubModelEditor({
       items: lineItems.filter((i) => i.item_type === t),
     })),
   }));
+
+  const extendedCostItems = result.items.filter(
+    (r) => r.item.budget_tier === "מורחב" && !isIncomeItemType(r.item.item_type)
+  );
+  const extendedAnnualTotal = extendedCostItems.reduce((s, r) => s + r.totalAnnual, 0);
+  const totalParticipants = subModel.participants_count * (subModel.groups_count || 1);
+  const extendedCostPerParticipantPerMonth =
+    totalParticipants > 0 && subModel.active_months_count > 0
+      ? extendedAnnualTotal / totalParticipants / subModel.active_months_count
+      : null;
 
   return (
     <div className="space-y-8">
@@ -554,6 +564,55 @@ export function SubModelEditor({
           </div>
         </div>
         <ReportTable result={result} cutoffMonth={cutoffMonth} tierFilter={tierFilter} />
+      </section>
+
+      <section className="rounded-2xl border border-border bg-surface p-5">
+        <h2 className="mb-3 text-lg font-semibold">דוח הרחבות</h2>
+        {extendedCostItems.length === 0 ? (
+          <p className="text-sm text-foreground-muted">אין סעיפי הרחבה (תקציב מורחב) במודל משנה זה.</p>
+        ) : (
+          <>
+            <div className="overflow-x-auto rounded-xl border border-border">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border bg-surface-muted text-right">
+                    <th className="px-3 py-2 font-semibold">מרכיב הרחבה</th>
+                    <th className="px-3 py-2 font-semibold">עלות שנתית</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {extendedCostItems.map((r) => (
+                    <tr key={r.item.id} className="border-b border-border last:border-0">
+                      <td className="px-3 py-2">
+                        {ITEM_TYPE_LABELS[r.item.item_type]}
+                        {r.item.role_label ? ` — ${r.item.role_label}` : ""}
+                        {r.item.notes ? ` (${r.item.notes})` : ""}
+                      </td>
+                      <td className="px-3 py-2 tabular-nums">{fmt(r.totalAnnual)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr className="border-t border-border bg-surface-muted font-semibold">
+                    <td className="px-3 py-2">סה&quot;כ עלות הרחבות שנתית</td>
+                    <td className="px-3 py-2 tabular-nums">{fmt(extendedAnnualTotal)}</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+            <div className="mt-4 rounded-xl border border-border bg-surface-muted p-4">
+              <span className="text-xs font-medium text-foreground-muted">עלות תוספתית לחודש למשתתף</span>
+              <div className="mt-1 text-xl font-bold tabular-nums">
+                {extendedCostPerParticipantPerMonth !== null
+                  ? `₪${extendedCostPerParticipantPerMonth.toLocaleString("he-IL", { maximumFractionDigits: 2 })}`
+                  : "—"}
+              </div>
+              <p className="mt-0.5 text-[11px] text-foreground-muted">
+                סך עלות ההרחבות השנתית, חלקי סך המשתתפים, חלקי כמות חודשי הפעילות
+              </p>
+            </div>
+          </>
+        )}
       </section>
     </div>
   );

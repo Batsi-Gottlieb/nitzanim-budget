@@ -55,6 +55,13 @@ const INCOME_TYPES = new Set<BudgetItemType>([
   "הכנסת_עירייה",
 ]);
 
+/** Whether this item type is an income line (as opposed to a cost line) — used to separate the
+ * "extensions" cost report from the extended-tier's own additional-income line (הכנסה_משתתף_תוספתי
+ * is tagged budget_tier "מורחב" too, but it's revenue, not part of the extensions' cost). */
+export function isIncomeItemType(itemType: BudgetItemType): boolean {
+  return INCOME_TYPES.has(itemType);
+}
+
 export type ResolvedMonth = {
   month_order: number;
   calendar_month: number;
