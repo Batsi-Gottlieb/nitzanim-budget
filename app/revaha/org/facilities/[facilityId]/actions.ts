@@ -269,6 +269,63 @@ export async function deleteExpenseLineItem(id: string, facilityId: string) {
   revalidatePath(`/revaha/org/facilities/${facilityId}`);
 }
 
+export async function updateFacilityIncome(facilityId: string, formData: FormData) {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("facilities_revaha")
+    .update({
+      participant_rate: num(formData, "participant_rate"),
+      rent_reimbursement_rate: num(formData, "rent_reimbursement_rate"),
+      security_participation_monthly: num(formData, "security_participation_monthly"),
+      bat_sherut_rate: num(formData, "bat_sherut_rate"),
+      bat_ami_rate: num(formData, "bat_ami_rate"),
+      bat_sherut_count: num(formData, "bat_sherut_count") ?? 0,
+      bat_ami_count: num(formData, "bat_ami_count") ?? 0,
+    })
+    .eq("id", facilityId)
+    .select("id");
+  if (error) return { error: error.message };
+  if (!data?.length) return { error: "השמירה לא בוצעה — אין הרשאה לעדכן פנימייה זו" };
+  revalidatePath(`/revaha/org/facilities/${facilityId}`);
+  return { error: null };
+}
+
+const FACILITY_INCOME_TYPES = ["welfare_current_expenses", "donations", "rentals", "other1", "other2"] as const;
+
+function incomeLineFromForm(formData: FormData) {
+  const income_type = formData.get("income_type") as string;
+  if (!(FACILITY_INCOME_TYPES as readonly string[]).includes(income_type)) return { error: "יש לבחור סוג הכנסה" as const };
+  const label = ((formData.get("label") as string) || "").trim();
+  if ((income_type === "other1" || income_type === "other2") && !label) return { error: "יש לרשום פרטים עבור סוג ההכנסה 'אחר'" as const };
+  return { error: null, values: { income_type, label: label || null, monthly_amount: num(formData, "monthly_amount") } };
+}
+
+export async function createIncomeLineItem(facilityId: string, formData: FormData) {
+  const parsed = incomeLineFromForm(formData);
+  if (parsed.error) return { error: parsed.error };
+  const supabase = await createClient();
+  const { error } = await supabase.from("facility_income_line_items_revaha").insert({ facility_id: facilityId, ...parsed.values });
+  if (error) return { error: error.message };
+  revalidatePath(`/revaha/org/facilities/${facilityId}`);
+  return { error: null };
+}
+
+export async function updateIncomeLineItem(id: string, facilityId: string, formData: FormData) {
+  const parsed = incomeLineFromForm(formData);
+  if (parsed.error) return { error: parsed.error };
+  const supabase = await createClient();
+  const { error } = await supabase.from("facility_income_line_items_revaha").update(parsed.values).eq("id", id);
+  if (error) return { error: error.message };
+  revalidatePath(`/revaha/org/facilities/${facilityId}`);
+  return { error: null };
+}
+
+export async function deleteIncomeLineItem(id: string, facilityId: string) {
+  const supabase = await createClient();
+  await supabase.from("facility_income_line_items_revaha").delete().eq("id", id);
+  revalidatePath(`/revaha/org/facilities/${facilityId}`);
+}
+
 type ImportRow = {
   fullName: string;
   phone: string;

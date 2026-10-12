@@ -109,8 +109,11 @@ export async function updateFacilityModel(modelId: string, formData: FormData) {
     bat_sherut_full_rate: num(formData, "bat_sherut_full_rate"),
     bat_sherut_bat_ami_rate: num(formData, "bat_sherut_bat_ami_rate"),
   };
-  await supabase.from("facility_models_revaha").update(payload).eq("id", modelId);
+  const { data, error } = await supabase.from("facility_models_revaha").update(payload).eq("id", modelId).select("id");
+  if (error) return { error: error.message };
+  if (!data?.length) return { error: "השמירה לא בוצעה — אין הרשאה לעדכן מודל זה" };
   revalidatePath(`/revaha/admin/base-data/models/${modelId}`);
+  return { error: null };
 }
 
 export async function upsertFacilityModelRole(modelId: string, formData: FormData) {

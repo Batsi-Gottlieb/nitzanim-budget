@@ -1,4 +1,4 @@
-import { Facility, FacilityExpenseLineItem, FacilityModel, FacilityModelRole, IncomeRateCategory, Role, RoleType, Staff, StaffRoleAssignment } from "./types";
+import { FACILITY_INCOME_TYPE_LABELS, Facility, FacilityExpenseLineItem, FacilityIncomeLineItem, FacilityModelRole, Role, RoleType, Staff, StaffRoleAssignment } from "./types";
 
 export const AVG_WEEKS_PER_MONTH = 4.3;
 export const DEFAULT_WEEKENDS_PER_MONTH = 4.3;
@@ -121,51 +121,100 @@ export function facilityEmployerCostMonthly(
   return staffList.reduce((sum, staff) => sum + staffEmployerCostMonthly(staff, assignments, facility), 0);
 }
 
+export type ExtraIncomeRow = { label: string; monthly: number; facilityName?: string };
+
 export type FacilityIncomeSummary = {
   participantIncomeMonthly: number;
   rentReimbursementIncomeMonthly: number;
   securityIncomeMonthly: number;
+  batSherutIncomeMonthly: number;
+  batAmiIncomeMonthly: number;
+  extraIncomeMonthly: number;
+  extraIncomeRows: ExtraIncomeRow[];
   totalIncomeMonthly: number;
 };
 
 /**
- * Monthly income for one facility, from its model's rate definitions (set once by the admin in
- * base-data) applied to how many children are actually placed there today:
- *   הכנסות משתתפים = מושמים בפועל * תעריף המשתתף של המודל
- *   שיפוי שכ"ד      = מושמים בפועל * תעריף שיפוי שכ"ד של המודל
- *   השתתפות שמירה   = סכום קבוע חודשי מהמודל (לא תלוי במושמים)
+ * Monthly income for one facility, from the facility's OWN tariffs (copied from its model when the
+ * facility was created / its model changed, then freely editable per facility):
+ *   הכנסות משתתפים = מושמים בפועל * תעריף משתתף
+ *   שיפוי שכ"ד      = מושמים בפועל * תעריף שיפוי שכ"ד
+ *   השתתפות אבטחה   = סכום קבוע חודשי
+ *   בת שירות / בת עמי = כמות * תעריף
+ * plus the facility's extra income lines (welfare-ministry current expenses, donations, rentals, other).
  */
 export function computeFacilityIncome(
-  facility: Pick<Facility, "occupancy_actual">,
-  facilityModel: Pick<FacilityModel, "participant_rate_id" | "rent_reimbursement_rate_id" | "security_participation_monthly"> | undefined,
-  incomeRateCategories: Pick<IncomeRateCategory, "id" | "monthly_amount">[]
+  facility: Pick<
+    Facility,
+    | "occupancy_actual"
+    | "participant_rate"
+    | "rent_reimbursement_rate"
+    | "security_participation_monthly"
+    | "bat_sherut_rate"
+    | "bat_ami_rate"
+    | "bat_sherut_count"
+    | "bat_ami_count"
+  >,
+  extraItems: Pick<FacilityIncomeLineItem, "income_type" | "label" | "monthly_amount">[] = [],
+  facilityName?: string
 ): FacilityIncomeSummary {
   const occupancy = facility.occupancy_actual ?? 0;
-  const rateById = new Map(incomeRateCategories.map((c) => [c.id, c.monthly_amount]));
-  const participantRate = facilityModel?.participant_rate_id ? rateById.get(facilityModel.participant_rate_id) ?? 0 : 0;
-  const rentReimbursementRate = facilityModel?.rent_reimbursement_rate_id
-    ? rateById.get(facilityModel.rent_reimbursement_rate_id) ?? 0
-    : 0;
-  const participantIncomeMonthly = occupancy * participantRate;
-  const rentReimbursementIncomeMonthly = occupancy * rentReimbursementRate;
-  const securityIncomeMonthly = facilityModel?.security_participation_monthly ?? 0;
+  const participantIncomeMonthly = occupancy * (facility.participant_rate ?? 0);
+  const rentReimbursementIncomeMonthly = occupancy * (facility.rent_reimbursement_rate ?? 0);
+  const securityIncomeMonthly = facility.security_participation_monthly ?? 0;
+  const batSherutIncomeMonthly = (facility.bat_sherut_count ?? 0) * (facility.bat_sherut_rate ?? 0);
+  const batAmiIncomeMonthly = (facility.bat_ami_count ?? 0) * (facility.bat_ami_rate ?? 0);
+  const extraIncomeRows: ExtraIncomeRow[] = extraItems
+    .filter((i) => (i.monthly_amount ?? 0) !== 0)
+    .map((i) => ({
+      label:
+        (i.income_type === "other1" || i.income_type === "other2") && i.label?.trim()
+          ? i.label.trim()
+          : FACILITY_INCOME_TYPE_LABELS[i.income_type],
+      monthly: i.monthly_amount ?? 0,
+      facilityName,
+    }));
+  const extraIncomeMonthly = extraIncomeRows.reduce((s, r) => s + r.monthly, 0);
   return {
     participantIncomeMonthly,
     rentReimbursementIncomeMonthly,
     securityIncomeMonthly,
-    totalIncomeMonthly: participantIncomeMonthly + rentReimbursementIncomeMonthly + securityIncomeMonthly,
+    batSherutIncomeMonthly,
+    batAmiIncomeMonthly,
+    extraIncomeMonthly,
+    extraIncomeRows,
+    totalIncomeMonthly:
+      participantIncomeMonthly +
+      rentReimbursementIncomeMonthly +
+      securityIncomeMonthly +
+      batSherutIncomeMonthly +
+      batAmiIncomeMonthly +
+      extraIncomeMonthly,
   };
 }
 
 export function addFacilityIncomes(summaries: FacilityIncomeSummary[]): FacilityIncomeSummary {
-  return summaries.reduce(
+  return summaries.reduce<FacilityIncomeSummary>(
     (acc, s) => ({
       participantIncomeMonthly: acc.participantIncomeMonthly + s.participantIncomeMonthly,
       rentReimbursementIncomeMonthly: acc.rentReimbursementIncomeMonthly + s.rentReimbursementIncomeMonthly,
       securityIncomeMonthly: acc.securityIncomeMonthly + s.securityIncomeMonthly,
+      batSherutIncomeMonthly: acc.batSherutIncomeMonthly + s.batSherutIncomeMonthly,
+      batAmiIncomeMonthly: acc.batAmiIncomeMonthly + s.batAmiIncomeMonthly,
+      extraIncomeMonthly: acc.extraIncomeMonthly + s.extraIncomeMonthly,
+      extraIncomeRows: [...acc.extraIncomeRows, ...s.extraIncomeRows],
       totalIncomeMonthly: acc.totalIncomeMonthly + s.totalIncomeMonthly,
     }),
-    { participantIncomeMonthly: 0, rentReimbursementIncomeMonthly: 0, securityIncomeMonthly: 0, totalIncomeMonthly: 0 }
+    {
+      participantIncomeMonthly: 0,
+      rentReimbursementIncomeMonthly: 0,
+      securityIncomeMonthly: 0,
+      batSherutIncomeMonthly: 0,
+      batAmiIncomeMonthly: 0,
+      extraIncomeMonthly: 0,
+      extraIncomeRows: [],
+      totalIncomeMonthly: 0,
+    }
   );
 }
 
@@ -175,49 +224,102 @@ export type RoleTypeEmployerCostRow = {
   employerCostMonthly: number;
 };
 
+/** One row per (employee, role): that role's share of the employee's total employer cost. */
+export type AssignmentCostRow = {
+  staffId: string;
+  staffName: string;
+  facilityName?: string;
+  roleId: string;
+  roleName: string;
+  roleTypeId: string;
+  roleTypeName: string;
+  monthlyHours: number;
+  grossMonthly: number;
+  employerCostMonthly: number;
+};
+
 /**
- * Breaks facilityEmployerCostMonthly's total down by role TYPE, for the profit & loss report.
  * Employer cost is computed once per staff member (see staffEmployerCostMonthly) since fixed
  * additions/travel/training-fund apply to the person, not a specific role — so a person holding
- * several roles has their total cost split across those roles' types in proportion to each
- * role's own share of their gross salary. If a person's gross salary is zero across the board
- * (e.g. only fixed additions), their cost is split evenly across their role types instead, and a
- * person with no role at all is bucketed under "ללא תפקיד" — so the breakdown always sums to
- * exactly facilityEmployerCostMonthly's total.
+ * several roles has their total cost split across those roles in proportion to each role's own
+ * share of their gross salary. If a person's gross salary is zero across the board (e.g. only
+ * fixed additions), their cost is split evenly across their roles instead, and a person with no
+ * role at all gets a single "ללא תפקיד" row — so the rows always sum to exactly
+ * facilityEmployerCostMonthly's total.
  */
-export function facilityEmployerCostByRoleType(
-  staffList: Pick<Staff, "id" | "monthly_addition" | "monthly_travel" | "has_training_fund" | "employment_type">[],
+export function facilityEmployerCostByAssignment(
+  staffList: Pick<Staff, "id" | "full_name" | "monthly_addition" | "monthly_travel" | "has_training_fund" | "employment_type">[],
   assignments: StaffRoleAssignment[],
   facility: Pick<Facility, "weekends_per_month">,
-  roles: Pick<Role, "id" | "role_type_id">[],
-  roleTypes: Pick<RoleType, "id" | "name">[]
-): RoleTypeEmployerCostRow[] {
-  const roleTypeIdByRoleId = new Map(roles.map((r) => [r.id, r.role_type_id]));
-  const costByType = new Map<string, number>();
-  const addCost = (roleTypeId: string, amount: number) => {
-    costByType.set(roleTypeId, (costByType.get(roleTypeId) ?? 0) + amount);
-  };
+  roles: Pick<Role, "id" | "name" | "role_type_id">[],
+  roleTypes: Pick<RoleType, "id" | "name">[],
+  facilityName?: string
+): AssignmentCostRow[] {
+  const roleById = new Map(roles.map((r) => [r.id, r]));
+  const roleTypeNameById = new Map(roleTypes.map((rt) => [rt.id, rt.name]));
+  const rows: AssignmentCostRow[] = [];
 
   for (const staff of staffList) {
     const staffAssignments = assignments.filter((a) => a.staff_id === staff.id);
     const totalCost = staffEmployerCostMonthly(staff, assignments, facility);
     if (staffAssignments.length === 0) {
-      addCost("", totalCost);
+      rows.push({
+        staffId: staff.id,
+        staffName: staff.full_name,
+        facilityName,
+        roleId: "",
+        roleName: "ללא תפקיד",
+        roleTypeId: "",
+        roleTypeName: "ללא תפקיד",
+        monthlyHours: 0,
+        grossMonthly: 0,
+        employerCostMonthly: totalCost,
+      });
       continue;
     }
     const grossTotal = staffAssignments.reduce((sum, a) => sum + assignmentMonthlyWage(a, facility), 0);
     for (const a of staffAssignments) {
-      const roleTypeId = roleTypeIdByRoleId.get(a.role_id) ?? "";
-      const share = grossTotal > 0 ? assignmentMonthlyWage(a, facility) / grossTotal : 1 / staffAssignments.length;
-      addCost(roleTypeId, totalCost * share);
+      const role = roleById.get(a.role_id);
+      const gross = assignmentMonthlyWage(a, facility);
+      const share = grossTotal > 0 ? gross / grossTotal : 1 / staffAssignments.length;
+      const roleTypeId = role?.role_type_id ?? "";
+      rows.push({
+        staffId: staff.id,
+        staffName: staff.full_name,
+        facilityName,
+        roleId: a.role_id,
+        roleName: role?.name ?? "?",
+        roleTypeId,
+        roleTypeName: roleTypeId ? roleTypeNameById.get(roleTypeId) ?? "?" : "ללא תפקיד",
+        monthlyHours: monthlyHoursForAssignment(a, facility),
+        grossMonthly: gross,
+        employerCostMonthly: totalCost * share,
+      });
     }
   }
+  return rows;
+}
 
-  return Array.from(costByType.entries()).map(([roleTypeId, employerCostMonthly]) => ({
-    roleTypeId,
-    roleTypeName: roleTypeId ? roleTypes.find((rt) => rt.id === roleTypeId)?.name ?? "?" : "ללא תפקיד",
-    employerCostMonthly,
-  }));
+/** Totals of facilityEmployerCostByAssignment rows, one per role TYPE, for the profit & loss report. */
+export function employerCostRowsToRoleTypes(rows: AssignmentCostRow[]): RoleTypeEmployerCostRow[] {
+  const byType = new Map<string, RoleTypeEmployerCostRow>();
+  for (const r of rows) {
+    const existing = byType.get(r.roleTypeId);
+    if (existing) existing.employerCostMonthly += r.employerCostMonthly;
+    else byType.set(r.roleTypeId, { roleTypeId: r.roleTypeId, roleTypeName: r.roleTypeName, employerCostMonthly: r.employerCostMonthly });
+  }
+  return Array.from(byType.values());
+}
+
+/** Breaks facilityEmployerCostMonthly's total down by role TYPE (see facilityEmployerCostByAssignment). */
+export function facilityEmployerCostByRoleType(
+  staffList: Pick<Staff, "id" | "full_name" | "monthly_addition" | "monthly_travel" | "has_training_fund" | "employment_type">[],
+  assignments: StaffRoleAssignment[],
+  facility: Pick<Facility, "weekends_per_month">,
+  roles: Pick<Role, "id" | "name" | "role_type_id">[],
+  roleTypes: Pick<RoleType, "id" | "name">[]
+): RoleTypeEmployerCostRow[] {
+  return employerCostRowsToRoleTypes(facilityEmployerCostByAssignment(staffList, assignments, facility, roles, roleTypes));
 }
 
 /** Merges per-facility facilityEmployerCostByRoleType results into one row per role type across
@@ -234,11 +336,15 @@ export function addRoleTypeEmployerCosts(perFacility: RoleTypeEmployerCostRow[][
   return Array.from(byType.values());
 }
 
+export type ExpenseDetailRow = { label: string; monthly: number; facilityName?: string };
+
 export type ProfitLossSummary = {
   income: FacilityIncomeSummary;
   wageMonthly: number;
   wageByRoleType: RoleTypeEmployerCostRow[];
+  wageDetail: AssignmentCostRow[];
   expensesMonthly: number;
+  expenseDetail: ExpenseDetailRow[];
   totalCostsMonthly: number;
   netMonthly: number;
   netAnnual: number;
@@ -254,7 +360,8 @@ export function computeProfitLoss(
   income: FacilityIncomeSummary,
   wageMonthly: number,
   expensesMonthly: number,
-  wageByRoleType: RoleTypeEmployerCostRow[] = []
+  wageByRoleType: RoleTypeEmployerCostRow[] = [],
+  details: { wageDetail?: AssignmentCostRow[]; expenseDetail?: ExpenseDetailRow[] } = {}
 ): ProfitLossSummary {
   const totalCostsMonthly = wageMonthly + expensesMonthly;
   const netMonthly = income.totalIncomeMonthly - totalCostsMonthly;
@@ -262,7 +369,9 @@ export function computeProfitLoss(
     income,
     wageMonthly,
     wageByRoleType,
+    wageDetail: details.wageDetail ?? [],
     expensesMonthly,
+    expenseDetail: details.expenseDetail ?? [],
     totalCostsMonthly,
     netMonthly,
     netAnnual: netMonthly * 12,

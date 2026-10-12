@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { updateFacility } from "../actions";
 
 type FacilityModel = { id: string; name: string };
@@ -16,8 +16,14 @@ type Facility = {
 export function FacilityDetailForm({ facility, models }: { facility: Facility; models: FacilityModel[] }) {
   const [isPending, startTransition] = useTransition();
 
+  const [error, setError] = useState<string | null>(null);
+
   function handleSave(formData: FormData) {
-    startTransition(() => updateFacility(facility.id, formData));
+    setError(null);
+    startTransition(async () => {
+      const result = await updateFacility(facility.id, formData);
+      if (result?.error) setError(result.error);
+    });
   }
 
   const coefficient =
@@ -52,6 +58,7 @@ export function FacilityDetailForm({ facility, models }: { facility: Facility; m
               </option>
             ))}
           </select>
+          <p className="mt-1 text-[10px] text-slate-400">החלפת מודל תעתיק מחדש את תעריפי ההכנסה של המודל החדש.</p>
         </div>
         <div>
           <label className="mb-1 block text-xs font-medium text-slate-500">מושמים בפועל</label>
@@ -88,6 +95,7 @@ export function FacilityDetailForm({ facility, models }: { facility: Facility; m
           >
             {isPending ? "שומר..." : "שמירת פרטים"}
           </button>
+          {error && <span className="text-xs text-red-600">{error}</span>}
           {coefficient !== null && (
             <span className="rounded-md bg-indigo-50 px-2 py-1 text-[11px] font-bold text-indigo-700">
               מקדם מושמים: {coefficient.toFixed(0)}%

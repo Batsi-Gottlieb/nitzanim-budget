@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { updateFacilityModel } from "../../actions";
 
 type IncomeRateCategory = { id: string; rate_group: "participant" | "rent_reimbursement"; name: string; monthly_amount: number };
@@ -24,9 +24,14 @@ export function ModelDetailForm({
   rentReimbursementRates: IncomeRateCategory[];
 }) {
   const [isPending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
 
   function handleSave(formData: FormData) {
-    startTransition(() => updateFacilityModel(model.id, formData));
+    setError(null);
+    startTransition(async () => {
+      const result = await updateFacilityModel(model.id, formData);
+      if (result?.error) setError(result.error);
+    });
   }
 
   return (
@@ -52,7 +57,7 @@ export function ModelDetailForm({
             <option value="">ללא</option>
             {participantRates.map((r) => (
               <option key={r.id} value={r.id}>
-                {r.name}
+                {r.name} — ₪{r.monthly_amount.toLocaleString("he-IL")}
               </option>
             ))}
           </select>
@@ -67,7 +72,7 @@ export function ModelDetailForm({
             <option value="">ללא</option>
             {rentReimbursementRates.map((r) => (
               <option key={r.id} value={r.id}>
-                {r.name}
+                {r.name} — ₪{r.monthly_amount.toLocaleString("he-IL")}
               </option>
             ))}
           </select>
@@ -106,6 +111,7 @@ export function ModelDetailForm({
           >
             {isPending ? "שומר..." : "שמירת פרטים"}
           </button>
+          {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
         </div>
       </form>
     </section>

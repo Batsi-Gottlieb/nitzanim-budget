@@ -1,10 +1,12 @@
 "use client";
 
+import { useState } from "react";
 import { FileDown } from "lucide-react";
 import {
   computeFacilityIncome,
   computeProfitLoss,
-  facilityEmployerCostByRoleType,
+  employerCostRowsToRoleTypes,
+  facilityEmployerCostByAssignment,
   facilityEmployerCostMonthly,
   roleStaffingSummary,
   roleTypeStaffingSummary,
@@ -12,7 +14,7 @@ import {
   weeklyHoursForAssignment,
 } from "@/lib/revaha/calc";
 import { roleTypeDotColor } from "@/lib/revaha/roleTypeColors";
-import { Facility, FacilityModel, FacilityModelRole, IncomeRateCategory, PayMode, ScheduleMethod, DailyShifts, WEEKDAY_LABELS } from "@/lib/revaha/types";
+import { Facility, FacilityIncomeLineItem, FacilityModelRole, PayMode, ScheduleMethod, DailyShifts, WEEKDAY_LABELS } from "@/lib/revaha/types";
 import { ProfitLossTable } from "@/components/revaha/ProfitLossTable";
 
 type Role = { id: string; name: string; role_type_id: string };
@@ -39,7 +41,7 @@ type Assignment = {
   weekend_occurrences_per_month: number | null;
   daily_shifts: DailyShifts | null;
 };
-type ExpenseLineItem = { id: string; monthly_amount: number | null };
+type ExpenseLineItem = { id: string; category: string; monthly_amount: number | null };
 
 function fmtNum(n: number) {
   return n.toLocaleString("he-IL", { maximumFractionDigits: 1 });
@@ -99,8 +101,7 @@ function RoleTypeCard({
 export function ReportsSection({
   facility,
   facilityModelRoles,
-  facilityModel,
-  incomeRateCategories,
+  incomeItems,
   expenses,
   roles,
   roleTypes,
@@ -109,8 +110,7 @@ export function ReportsSection({
 }: {
   facility: Facility;
   facilityModelRoles: FacilityModelRole[];
-  facilityModel: FacilityModel | undefined;
-  incomeRateCategories: IncomeRateCategory[];
+  incomeItems: FacilityIncomeLineItem[];
   expenses: ExpenseLineItem[];
   roles: Role[];
   roleTypes: RoleType[];
@@ -122,15 +122,25 @@ export function ReportsSection({
   const allRoleTypeIds = roleTypes.map((rt) => rt.id);
   const staffById = new Map(staff.map((s) => [s.id, s.full_name]));
 
-  const income = computeFacilityIncome(facility, facilityModel, incomeRateCategories);
+  const [roleFilter, setRoleFilter] = useState("");
+
+  const income = computeFacilityIncome(facility, incomeItems);
   const wageMonthly = facilityEmployerCostMonthly(staff, assignments, facility);
-  const wageByRoleType = facilityEmployerCostByRoleType(staff, assignments, facility, roles, roleTypes);
+  const wageDetail = facilityEmployerCostByAssignment(staff, assignments, facility, roles, roleTypes);
+  const wageByRoleType = employerCostRowsToRoleTypes(wageDetail);
   const expensesMonthly = expenses.reduce((sum, e) => sum + (e.monthly_amount ?? 0), 0);
-  const profitLoss = computeProfitLoss(income, wageMonthly, expensesMonthly, wageByRoleType);
+  const expenseDetail = expenses
+    .filter((e) => (e.monthly_amount ?? 0) !== 0)
+    .map((e) => ({ label: e.category, monthly: e.monthly_amount ?? 0 }));
+  const profitLoss = computeProfitLoss(income, wageMonthly, expensesMonthly, wageByRoleType, { wageDetail, expenseDetail });
 
   return (
     <section className="space-y-4">
-      <ProfitLossTable summary={profitLoss} title="דוח רווח והפסד" />
+      <ProfitLossTable
+        summary={profitLoss}
+        title="דוח רווח והפסד"
+        exportHref={`/api/revaha/facilities/${facility.id}/payroll-report`}
+      />
 
       <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-2xs">
         <div className="mb-1 flex items-center justify-between">
@@ -167,6 +177,26 @@ export function ReportsSection({
         <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-2xs">
           <h3 className="mb-1 text-sm font-bold text-slate-900">שיבוץ עובדים — לפי ימים</h3>
           <p className="mb-3 text-xs text-slate-500">כניסה–יציאה לכל יום (שיבוץ מפורט) או סה&quot;כ שעות שבועי (שיבוץ מרוכז).</p>
+          <div className="mb-3 flex items-center gap-2">
+            <label htmlFor="assignment-role-filter" className="text-xs font-medium text-slate-500">
+              סינון לפי תפקיד:
+            </label>
+            <select
+              id="assignment-role-filter"
+              value={roleFilter}
+              onChange={(e) => setRoleFilter(e.target.value)}
+              className="rounded-lg border-2 border-slate-300 px-2.5 py-1.5 text-xs outline-none focus:border-indigo-400"
+            >
+              <option value="">כל התפקידים</option>
+              {roles
+                .filter((r) => assignments.some((a) => a.role_id === r.id))
+                .map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.name}
+                  </option>
+                ))}
+            </select>
+          </div>
           <div className="overflow-x-auto rounded-xl border border-slate-200">
             <table className="w-full text-sm">
               <thead className="bg-slate-50 text-right text-xs text-slate-500">
@@ -183,7 +213,7 @@ export function ReportsSection({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {assignments.map((a) => {
+                {assignments.filter((a) => !roleFilter || a.role_id === roleFilter).map((a) => {
                   const role = roles.find((r) => r.id === a.role_id);
                   const weeklyTotal = weeklyHoursForAssignment(a);
                   const fullTimeWeekly = weeklyFullTimeHoursForRole(a.role_id, facilityModelRoles);

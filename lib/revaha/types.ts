@@ -96,6 +96,32 @@ export type Facility = {
   occupancy_actual: number | null;
   occupancy_tender: number | null;
   weekends_per_month: number | null;
+  /** Per-facility tariffs: copied from the facility's model when the facility is created or its model changes, then freely editable. */
+  participant_rate: number | null;
+  rent_reimbursement_rate: number | null;
+  security_participation_monthly: number | null;
+  bat_sherut_rate: number | null;
+  bat_ami_rate: number | null;
+  bat_sherut_count: number;
+  bat_ami_count: number;
+};
+
+export type FacilityIncomeType = "welfare_current_expenses" | "donations" | "rentals" | "other1" | "other2";
+
+export const FACILITY_INCOME_TYPE_LABELS: Record<FacilityIncomeType, string> = {
+  welfare_current_expenses: "השתתפות משרד הרווחה בהוצאות שוטפות",
+  donations: "תרומות",
+  rentals: "השכרות",
+  other1: "אחר 1",
+  other2: "אחר 2",
+};
+
+export type FacilityIncomeLineItem = {
+  id: string;
+  facility_id: string;
+  income_type: FacilityIncomeType;
+  label: string | null;
+  monthly_amount: number | null;
 };
 
 export type PayMode = "hourly" | "monthly";

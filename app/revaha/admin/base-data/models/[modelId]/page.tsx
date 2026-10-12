@@ -45,7 +45,20 @@ export default async function RevahaFacilityModelDetailPage({ params }: { params
         activeModelId={modelId}
       />
 
-      <ModelDetailForm model={model} participantRates={participantRates} rentReimbursementRates={rentReimbursementRates} />
+      <ModelDetailForm
+        key={[
+          model.id,
+          model.name,
+          model.participant_rate_id,
+          model.rent_reimbursement_rate_id,
+          model.security_participation_monthly,
+          model.bat_sherut_full_rate,
+          model.bat_sherut_bat_ami_rate,
+        ].join("|")}
+        model={model}
+        participantRates={participantRates}
+        rentReimbursementRates={rentReimbursementRates}
+      />
       <ModelRolesTable modelId={modelId} roles={roles ?? []} roleTypes={roleTypes ?? []} requirements={requirements ?? []} />
     </div>
   );
