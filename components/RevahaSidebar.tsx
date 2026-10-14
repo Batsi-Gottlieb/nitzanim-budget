@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import { usePathname } from "next/navigation";
-import { Briefcase, ChevronLeft, Database, LayoutDashboard, Library, ShieldCheck, UserCog, Users, Wallet } from "lucide-react";
+import { Briefcase, ChevronLeft, Menu, X, Database, LayoutDashboard, Library, ShieldCheck, UserCog, Users, Wallet } from "lucide-react";
 import type { RevahaRole } from "@/lib/revaha/types";
 
 type NavCountKey = "organizations" | "resellerCompanies" | "facilities";
@@ -113,6 +114,8 @@ export function RevahaSidebar({
   companyLogoUrl?: string | null;
 }) {
   const pathname = usePathname();
+  const [open, setOpen] = useState(false);
+  const closeMenu = () => setOpen(false);
   const navItems = navItemsForRole(role);
   const isAdmin = role === "admin";
   const menuLabel = isAdmin ? "תפריט מנהל מערכת" : role === "org_user" ? "תפריט ארגון" : "תפריט חברה";
@@ -123,10 +126,45 @@ export function RevahaSidebar({
       : "ניהול הלקוחות שלכם";
 
   return (
-    <aside className="flex w-72 shrink-0 flex-col border-l border-slate-200/80 bg-white shadow-xs min-h-screen select-none">
+    <>
+    <header className="sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-slate-200 bg-white/95 px-4 py-2.5 backdrop-blur lg:hidden">
+      <Link href="/revaha" className="flex min-w-0 items-center gap-2.5">
+        {companyLogoUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={companyLogoUrl} alt={companyName ?? ""} className="h-8 w-8 shrink-0 rounded-lg border border-slate-200 object-contain" />
+        ) : (
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-indigo-600 text-base font-black text-white">ר</span>
+        )}
+        <span className="truncate text-sm font-bold text-slate-900">{companyName ?? "תקצוב ובקרה"}</span>
+      </Link>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        aria-label="פתיחת תפריט"
+        aria-expanded={open}
+        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/50"
+      >
+        <Menu className="h-5 w-5" />
+      </button>
+    </header>
+    {open && <div className="fixed inset-0 z-40 bg-slate-900/40 lg:hidden" onClick={closeMenu} aria-hidden="true" />}
+    <aside
+      className={`fixed inset-y-0 right-0 z-50 flex w-72 max-w-[85vw] shrink-0 select-none flex-col overflow-y-auto border-l border-slate-200/80 bg-white shadow-xl transition-transform duration-200 lg:static lg:z-auto lg:min-h-screen lg:translate-x-0 lg:overflow-visible lg:shadow-xs ${
+        open ? "translate-x-0" : "translate-x-full"
+      }`}
+    >
+      <button
+        type="button"
+        onClick={closeMenu}
+        aria-label="סגירת תפריט"
+        className="absolute left-3 top-3 z-10 flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 lg:hidden"
+      >
+        <X className="h-5 w-5" />
+      </button>
       <div className="border-b border-slate-100 bg-slate-50/50 p-5">
         <Link
           href="/revaha"
+          onClick={closeMenu}
           className="group -m-1.5 flex w-full items-center gap-3 rounded-xl p-1.5 text-right transition-all hover:bg-white hover:shadow-2xs"
         >
           {companyLogoUrl ? (
@@ -173,6 +211,7 @@ export function RevahaSidebar({
                 <Link
                   key={item.href}
                   href={item.href}
+                  onClick={closeMenu}
                   className={`group relative flex items-center gap-3 rounded-xl px-2.5 py-2.5 text-right transition-colors ${
                     active ? "bg-indigo-50/80" : "hover:bg-slate-50"
                   }`}
@@ -236,5 +275,6 @@ export function RevahaSidebar({
         </form>
       </div>
     </aside>
+    </>
   );
 }

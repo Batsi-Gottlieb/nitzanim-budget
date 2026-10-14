@@ -92,7 +92,7 @@ export default async function RevahaLayout({ children }: { children: React.React
           </button>
         </form>
       )}
-      <div className="flex flex-1">
+      <div className="flex flex-1 flex-col lg:flex-row">
         <RevahaSidebar
           role={profile.role}
           fullName={profile.full_name}
@@ -101,8 +101,8 @@ export default async function RevahaLayout({ children }: { children: React.React
           companyName={companyName}
           companyLogoUrl={companyLogoUrl}
         />
-        <div className="flex min-h-screen flex-1 flex-col">
-          <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6 lg:px-8">{children}</main>
+        <div className="flex min-w-0 flex-1 flex-col lg:min-h-screen">
+          <main className="revaha-main mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6 lg:px-8">{children}</main>
         </div>
       </div>
     </div>

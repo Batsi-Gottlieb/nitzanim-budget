@@ -69,3 +69,18 @@ body {
   background-clip: text;
   color: transparent;
 }
+
+/* revaha (mobile): stack form fields full-width instead of fixed-width inline inputs */
+@media (max-width: 639px) {
+  .revaha-main input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="hidden"]):not([type="time"]),
+  .revaha-main select,
+  .revaha-main textarea {
+    width: 100%;
+    max-width: 100%;
+  }
+  .revaha-main form > div:has(> input:not([type="checkbox"]):not([type="hidden"])),
+  .revaha-main form > div:has(> select) {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+}
