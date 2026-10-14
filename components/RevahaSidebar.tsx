@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Briefcase, ChevronLeft, Database, LayoutDashboard, Library, ShieldCheck, Users, Wallet } from "lucide-react";
+import { Briefcase, ChevronLeft, Database, LayoutDashboard, Library, ShieldCheck, UserCog, Users, Wallet } from "lucide-react";
 import type { RevahaRole } from "@/lib/revaha/types";
 
 type NavCountKey = "organizations" | "resellerCompanies" | "facilities";
@@ -51,6 +51,7 @@ function navItemsForRole(role: RevahaRole): NavItem[] {
           icon: Database,
         },
         { href: "/revaha/admin/payments", title: "תשלומים", subtitle: "מעקב תשלומי חברות מערכת", icon: Wallet },
+        { href: "/revaha/admin/admins", title: "מנהלי מערכת", subtitle: "הוספת אדמינים נוספים", icon: UserCog },
       ];
     case "company_admin":
       return [
