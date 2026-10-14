@@ -30,7 +30,8 @@ export async function addRevahaAdmin(formData: FormData) {
   if (!email) return { error: "יש להזין כתובת אימייל" };
 
   const adminClient = createAdminClient();
-  const password = randomPassword();
+  const chosenPassword = ((formData.get("password") as string) || "").trim();
+  const password = chosenPassword || randomPassword();
   let userId: string | null = null;
   let existingLogin = false;
 
@@ -69,7 +70,37 @@ export async function addRevahaAdmin(formData: FormData) {
   if (insertError) return { error: insertError.message };
 
   revalidatePath("/revaha/admin/admins");
-  return { error: null, id: userId!, email, full_name, password: existingLogin ? null : password, existingLogin };
+  return { error: null, id: userId!, email, full_name, password: existingLogin || chosenPassword ? null : password, chosenPassword: !existingLogin && !!chosenPassword, existingLogin };
+}
+
+/** Edits an admin's name / login email and optionally sets a new password chosen by the caller (any password Supabase Auth accepts). */
+export async function updateRevahaAdmin(userId: string, formData: FormData) {
+  await requireSuperAdmin();
+  const supabase = await createClient();
+  const { data: profile } = await supabase.from("profiles_revaha").select("id, role, email").eq("id", userId).maybeSingle();
+  if (profile?.role !== "admin") return { error: "המשתמש אינו אדמין" };
+
+  const full_name = ((formData.get("full_name") as string) || "").trim() || null;
+  const email = ((formData.get("email") as string) || "").trim().toLowerCase();
+  const password = ((formData.get("password") as string) || "").trim();
+  if (!email) return { error: "יש להזין כתובת אימייל" };
+
+  const authUpdate: { email?: string; email_confirm?: boolean; password?: string } = {};
+  if (email !== (profile.email ?? "").toLowerCase()) {
+    authUpdate.email = email;
+    authUpdate.email_confirm = true;
+  }
+  if (password) authUpdate.password = password;
+  if (Object.keys(authUpdate).length) {
+    const { error } = await createAdminClient().auth.admin.updateUserById(userId, authUpdate);
+    if (error) return { error: error.message };
+  }
+
+  const { error: profileError } = await supabase.from("profiles_revaha").update({ full_name, email }).eq("id", userId);
+  if (profileError) return { error: profileError.message };
+
+  revalidatePath("/revaha/admin/admins");
+  return { error: null, full_name, email, passwordChanged: !!password };
 }
 
 export async function resetRevahaAdminPassword(userId: string) {
