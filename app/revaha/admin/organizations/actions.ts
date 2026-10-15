@@ -102,11 +102,24 @@ export async function assignOrganizationToCompany(organizationId: string, formDa
   revalidatePath("/revaha/admin/organizations");
 }
 
+/** Confirms `userId` is an org_user of `organizationId` that the caller may manage (RLS-bound read). */
+async function assertOrgUser(userId: string, organizationId: string) {
+  await assertUserInScope(userId);
+  const supabase = await createClient();
+  const { data } = await supabase.from("profiles_revaha").select("id, role, organization_id, email").eq("id", userId).maybeSingle();
+  if (!data || data.role !== "org_user" || data.organization_id !== organizationId) {
+    throw new Error("משתמש זה אינו משתמש של ארגון זה");
+  }
+  return data as { id: string; email: string | null };
+}
+
 export async function addUserToOrganization(organizationId: string, formData: FormData) {
   await requireRevahaManager();
-  const email = formData.get("email") as string;
-  const full_name = (formData.get("full_name") as string) || null;
-  const password = randomPassword();
+  const email = ((formData.get("email") as string) || "").trim().toLowerCase();
+  const full_name = ((formData.get("full_name") as string) || "").trim() || null;
+  const password = ((formData.get("password") as string) || "").trim();
+  if (!email) return { error: "יש להזין כתובת אימייל" };
+  if (password.length < 6) return { error: "הסיסמה חייבת להכיל לפחות 6 תווים" };
 
   const adminClient = createAdminClient();
   const { data: signUpData, error } = await adminClient.auth.admin.createUser({
@@ -119,36 +132,63 @@ export async function addUserToOrganization(organizationId: string, formData: Fo
   }
 
   const supabase = await createClient();
-  await supabase
+  const { error: insertError } = await supabase
     .from("profiles_revaha")
     .insert({ id: signUpData.user.id, role: "org_user", organization_id: organizationId, full_name, email });
-
-  revalidatePath(`/revaha/admin/organizations/${organizationId}`);
-  return { error: null, email, password, id: signUpData.user.id };
-}
-
-export async function resetOrgUserPassword(userId: string, organizationId: string) {
-  await requireRevahaManager();
-  await assertUserInScope(userId);
-  const password = randomPassword();
-  const adminClient = createAdminClient();
-  const { error } = await adminClient.auth.admin.updateUserById(userId, { password });
-  if (error) return { error: error.message };
-  revalidatePath(`/revaha/admin/organizations/${organizationId}`);
-  return { error: null, password };
-}
-
-export async function setOrgUserPassword(userId: string, organizationId: string, formData: FormData) {
-  await requireRevahaManager();
-  await assertUserInScope(userId);
-  const password = formData.get("password") as string;
-  if (!password || password.length < 6) {
-    return { error: "הסיסמה חייבת להכיל לפחות 6 תווים" };
+  if (insertError) {
+    await adminClient.auth.admin.deleteUser(signUpData.user.id);
+    return { error: insertError.message };
   }
-  const adminClient = createAdminClient();
-  const { error } = await adminClient.auth.admin.updateUserById(userId, { password });
-  if (error) return { error: error.message };
+
   revalidatePath(`/revaha/admin/organizations/${organizationId}`);
+  revalidatePath("/revaha/admin/organizations");
+  return { error: null, email, full_name, id: signUpData.user.id };
+}
+
+/** Edits an organization user's name / login email, and optionally sets a new password they chose. */
+export async function updateOrgUser(userId: string, organizationId: string, formData: FormData) {
+  await requireRevahaManager();
+  const current = await assertOrgUser(userId, organizationId);
+  const full_name = ((formData.get("full_name") as string) || "").trim() || null;
+  const email = ((formData.get("email") as string) || "").trim().toLowerCase();
+  const password = ((formData.get("password") as string) || "").trim();
+  if (!email) return { error: "יש להזין כתובת אימייל" };
+  if (password && password.length < 6) return { error: "הסיסמה חייבת להכיל לפחות 6 תווים" };
+
+  const authUpdate: { email?: string; email_confirm?: boolean; password?: string } = {};
+  if (email !== (current.email ?? "").toLowerCase()) {
+    authUpdate.email = email;
+    authUpdate.email_confirm = true;
+  }
+  if (password) authUpdate.password = password;
+  if (Object.keys(authUpdate).length) {
+    const { error } = await createAdminClient().auth.admin.updateUserById(userId, authUpdate);
+    if (error) return { error: error.message };
+  }
+
+  const supabase = await createClient();
+  const { error: profileError } = await supabase.from("profiles_revaha").update({ full_name, email }).eq("id", userId);
+  if (profileError) return { error: profileError.message };
+
+  revalidatePath(`/revaha/admin/organizations/${organizationId}`);
+  revalidatePath("/revaha/admin/organizations");
+  return { error: null, full_name, email, passwordChanged: !!password };
+}
+
+/** Permanently deletes an organization user (profile + login). The organization itself and its facilities are untouched. */
+export async function deleteOrgUser(userId: string, organizationId: string) {
+  const session = await requireRevahaManager();
+  if (session.userId === userId) return { error: "לא ניתן למחוק את המשתמש שאתם מחוברים אליו" };
+  await assertOrgUser(userId, organizationId);
+
+  const supabase = await createClient();
+  const { error: profileError } = await supabase.from("profiles_revaha").delete().eq("id", userId);
+  if (profileError) return { error: profileError.message };
+  const { error } = await createAdminClient().auth.admin.deleteUser(userId);
+  if (error) return { error: error.message };
+
+  revalidatePath(`/revaha/admin/organizations/${organizationId}`);
+  revalidatePath("/revaha/admin/organizations");
   return { error: null };
 }
 

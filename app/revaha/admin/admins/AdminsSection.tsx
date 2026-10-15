@@ -2,6 +2,7 @@
 
 import { useActionState, useState, useTransition } from "react";
 import { Pencil } from "lucide-react";
+import { PasswordInput } from "@/components/revaha/PasswordInput";
 import { addRevahaAdmin, resetRevahaAdminPassword, updateRevahaAdmin } from "./actions";
 
 type AdminRow = { id: string; email: string | null; full_name: string | null };
@@ -41,7 +42,7 @@ function AdminEditForm({
       </div>
       <div>
         <label className="mb-1 block text-xs font-medium text-slate-500">סיסמה חדשה</label>
-        <input name="password" type="text" autoComplete="off" placeholder="השאירו ריק כדי לא לשנות" className={INPUT} />
+        <PasswordInput name="password" minLength={6} placeholder="ריק = ללא שינוי" />
       </div>
       <div className="flex flex-wrap items-center gap-2 sm:col-span-3">
         <button
@@ -161,15 +162,9 @@ export function AdminsSection({ initialAdmins, currentUserId }: { initialAdmins:
           </div>
           <div>
             <label className="mb-1 block text-xs font-medium text-slate-500">סיסמה (לא חובה)</label>
-            <input
-              name="password"
-              type="text"
-              autoComplete="off"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              placeholder="ריק = סיסמה אקראית"
-              className="w-44 rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm"
-            />
+            <div className="w-48">
+              <PasswordInput name="password" value={newPassword} onChange={setNewPassword} placeholder="ריק = סיסמה אקראית" />
+            </div>
           </div>
           <button
             disabled={addPending}
