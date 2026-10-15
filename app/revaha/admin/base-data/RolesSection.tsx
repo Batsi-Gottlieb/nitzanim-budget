@@ -1,12 +1,56 @@
 "use client";
 
-import { useActionState } from "react";
-import { createRole } from "./actions";
+import { useActionState, useState, useTransition } from "react";
+import { createRole, deleteRole, updateRole } from "./actions";
 import { roleTypeDotColor } from "@/lib/revaha/roleTypeColors";
+import { RowActions } from "./RowActions";
 
 type RoleType = { id: string; name: string };
 type Role = { id: string; name: string; role_type_id: string };
 
+function RoleRow({ role, roleTypes }: { role: Role; roleTypes: RoleType[] }) {
+  const [editing, setEditing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
+
+  function handleSave(formData: FormData) {
+    setError(null);
+    startTransition(async () => {
+      const result = await updateRole(role.id, formData);
+      if (result?.error) setError(result.error);
+      else setEditing(false);
+    });
+  }
+
+  if (editing) {
+    return (
+      <form action={handleSave} className="flex w-full flex-wrap items-center gap-2 rounded-lg border-2 border-indigo-200 bg-white px-3 py-2">
+        <input name="name" required defaultValue={role.name} aria-label="שם התפקיד" className="w-44 rounded-lg border border-slate-200 px-2 py-1 text-sm" />
+        <select name="role_type_id" defaultValue={role.role_type_id} aria-label="סוג תפקיד" className="w-40 rounded-lg border border-slate-200 px-2 py-1 text-sm">
+          {roleTypes.map((rt) => (
+            <option key={rt.id} value={rt.id}>
+              {rt.name}
+            </option>
+          ))}
+        </select>
+        <button disabled={isPending} className="rounded-md bg-indigo-600 px-3 py-1 text-xs font-semibold text-white hover:bg-indigo-700 disabled:opacity-60">
+          {isPending ? "שומר..." : "שמירה"}
+        </button>
+        <button type="button" onClick={() => setEditing(false)} className="rounded-md border border-slate-300 px-3 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-50">
+          ביטול
+        </button>
+        {error && <span className="text-xs text-red-600">{error}</span>}
+      </form>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-2 rounded-lg bg-slate-50/60 px-3 py-1">
+      <span className="text-sm text-slate-900">{role.name}</span>
+      <RowActions label={role.name} onEdit={() => setEditing(true)} onDelete={() => deleteRole(role.id)} />
+    </div>
+  );
+}
 export function RolesSection({ roleTypes, roles }: { roleTypes: RoleType[]; roles: Role[] }) {
   const [state, formAction, isPending] = useActionState(
     async (_prev: { error: string | null }, formData: FormData) => createRole(formData),
@@ -31,12 +75,7 @@ export function RolesSection({ roleTypes, roles }: { roleTypes: RoleType[]; role
               </div>
               <div className="flex flex-wrap gap-2">
                 {rtRoles.map((r) => (
-                  <span
-                    key={r.id}
-                    className="inline-flex items-center gap-1.5 rounded bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700"
-                  >
-                    {r.name}
-                  </span>
+                  <RoleRow key={r.id + r.name + r.role_type_id} role={r} roleTypes={roleTypes} />
                 ))}
               </div>
             </div>

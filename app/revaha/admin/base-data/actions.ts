@@ -75,12 +75,124 @@ export async function createIncomeRateCategory(formData: FormData) {
   return { error: null };
 }
 
-export async function updateIncomeRateCategoryAmount(id: string, formData: FormData) {
-  await requireRevahaAdmin();
+type CatalogTable = "role_types_revaha" | "roles_revaha" | "income_rate_categories_revaha";
+
+/**
+ * Super-admin may change any catalog row; a company_admin only the rows their own company added
+ * (the global baseline is shared, so it stays read-only for them).
+ */
+async function assertCanModifyCatalogRow(table: CatalogTable, id: string): Promise<string | null> {
+  const session = await requireRevahaAdmin();
+  const supabase = await createClient();
+  const { data } = await supabase.from(table).select("id, reseller_company_id").eq("id", id).maybeSingle();
+  if (!data) return "הפריט לא נמצא";
+  if (session.profile?.role === "company_admin" && data.reseller_company_id !== session.profile.reseller_company_id) {
+    return "ניתן לערוך או למחוק רק פריטים שנוספו על ידי החברה שלכם";
+  }
+  return null;
+}
+
+async function countRows(table: string, column: string, id: string): Promise<number> {
+  const supabase = await createClient();
+  const { count } = await supabase.from(table).select("id", { count: "exact", head: true }).eq(column, id);
+  return count ?? 0;
+}
+
+export async function updateIncomeRateCategory(id: string, formData: FormData) {
+  const denied = await assertCanModifyCatalogRow("income_rate_categories_revaha", id);
+  if (denied) return { error: denied };
+  const name = (formData.get("name") as string)?.trim();
+  if (!name) return { error: "יש להזין שם" };
   const monthly_amount = num(formData, "monthly_amount") ?? 0;
   const supabase = await createClient();
-  await supabase.from("income_rate_categories_revaha").update({ monthly_amount }).eq("id", id);
+  const { error } = await supabase.from("income_rate_categories_revaha").update({ name, monthly_amount }).eq("id", id);
+  if (error) return { error: error.message };
   revalidatePath("/revaha/admin/base-data");
+  return { error: null };
+}
+
+export async function deleteIncomeRateCategory(id: string) {
+  const denied = await assertCanModifyCatalogRow("income_rate_categories_revaha", id);
+  if (denied) return { error: denied };
+  const supabase = await createClient();
+  const [asParticipant, asRent] = await Promise.all([
+    countRows("facility_models_revaha", "participant_rate_id", id),
+    countRows("facility_models_revaha", "rent_reimbursement_rate_id", id),
+  ]);
+  if (asParticipant + asRent > 0) {
+    return { error: `התעריף משמש ${asParticipant + asRent} מודלים — יש להחליף אותו במודלים לפני המחיקה` };
+  }
+  const { error } = await supabase.from("income_rate_categories_revaha").delete().eq("id", id);
+  if (error) return { error: error.message };
+  revalidatePath("/revaha/admin/base-data");
+  return { error: null };
+}
+
+export async function updateRoleType(id: string, formData: FormData) {
+  const denied = await assertCanModifyCatalogRow("role_types_revaha", id);
+  if (denied) return { error: denied };
+  const name = (formData.get("name") as string)?.trim();
+  if (!name) return { error: "יש להזין שם" };
+  const supabase = await createClient();
+  const { error } = await supabase.from("role_types_revaha").update({ name }).eq("id", id);
+  if (error) return { error: error.message };
+  revalidatePath("/revaha/admin/base-data");
+  return { error: null };
+}
+
+export async function deleteRoleType(id: string) {
+  const denied = await assertCanModifyCatalogRow("role_types_revaha", id);
+  if (denied) return { error: denied };
+  const [roles, rates] = await Promise.all([
+    countRows("roles_revaha", "role_type_id", id),
+    countRows("staff_role_type_rates_revaha", "role_type_id", id),
+  ]);
+  if (roles > 0) return { error: `סוג התפקיד כולל ${roles} תפקידים — יש למחוק או להעביר אותם לפני המחיקה` };
+  if (rates > 0) return { error: "סוג התפקיד בשימוש בתעריפי עובדים קיימים ולכן לא ניתן למחוק אותו" };
+  const supabase = await createClient();
+  const { error } = await supabase.from("role_types_revaha").delete().eq("id", id);
+  if (error) return { error: error.message };
+  revalidatePath("/revaha/admin/base-data");
+  return { error: null };
+}
+
+export async function updateRole(id: string, formData: FormData) {
+  const denied = await assertCanModifyCatalogRow("roles_revaha", id);
+  if (denied) return { error: denied };
+  const name = (formData.get("name") as string)?.trim();
+  const role_type_id = formData.get("role_type_id") as string;
+  if (!name || !role_type_id) return { error: "יש להזין שם ולבחור סוג תפקיד" };
+  const supabase = await createClient();
+  const { data: current } = await supabase.from("roles_revaha").select("role_type_id").eq("id", id).maybeSingle();
+  if (current && current.role_type_id !== role_type_id) {
+    const [assignments, modelRoles] = await Promise.all([
+      countRows("staff_role_assignments_revaha", "role_id", id),
+      countRows("facility_model_roles_revaha", "role_id", id),
+    ]);
+    if (assignments + modelRoles > 0) {
+      return { error: "התפקיד בשימוש (בשיבוצים או במודלים) ולכן לא ניתן להחליף את סוג התפקיד שלו — ניתן לשנות רק את השם" };
+    }
+  }
+  const { error } = await supabase.from("roles_revaha").update({ name, role_type_id }).eq("id", id);
+  if (error) return { error: error.message };
+  revalidatePath("/revaha/admin/base-data");
+  return { error: null };
+}
+
+export async function deleteRole(id: string) {
+  const denied = await assertCanModifyCatalogRow("roles_revaha", id);
+  if (denied) return { error: denied };
+  const [assignments, modelRoles] = await Promise.all([
+    countRows("staff_role_assignments_revaha", "role_id", id),
+    countRows("facility_model_roles_revaha", "role_id", id),
+  ]);
+  if (assignments > 0) return { error: `התפקיד משובץ ל-${assignments} שיבוצי עובדים — לא ניתן למחוק` };
+  if (modelRoles > 0) return { error: `התפקיד נמצא בתקן של ${modelRoles} מודלים — יש להסיר אותו מהמודלים לפני המחיקה` };
+  const supabase = await createClient();
+  const { error } = await supabase.from("roles_revaha").delete().eq("id", id);
+  if (error) return { error: error.message };
+  revalidatePath("/revaha/admin/base-data");
+  return { error: null };
 }
 
 export async function createFacilityModel(formData: FormData) {
