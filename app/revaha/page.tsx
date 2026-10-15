@@ -82,16 +82,16 @@ export default async function RevahaDashboardPage() {
           <KpiCard label="פנימיות פעילות" value={facilities?.length ?? 0} subtitle="בפיקוח רווחה" icon={Building2} />
           <KpiCard label="מצבת כוח אדם" value={staff?.length ?? 0} subtitle="עובדים משובצים" icon={Users2} />
           <KpiCard
-            label="עלות שכר בפועל"
-            value={`₪${fmt(total.wageMonthly)}`}
-            subtitle="עלות מעסיק חודשית"
+            label="עלות מעביד חודשית"
+            value={`₪${fmt(total.employerCostMonthly)}`}
+            subtitle="שכר, תוספות ונסיעות כולל תוספות מעביד"
             icon={Banknote}
             accent="emerald"
           />
           <KpiCard
             label="תקציב רשתי חודשי"
             value={`₪${fmt(total.totalMonthly)}`}
-            subtitle="שכר + תוספות + הוצאות"
+            subtitle="עלות מעביד + הוצאות"
             icon={Wallet}
           />
         </div>
@@ -181,7 +181,7 @@ export default async function RevahaDashboardPage() {
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
         <KpiCard label="פנימיות" value={facilities?.length ?? 0} icon={Building2} />
-        <KpiCard label='סה"כ שכר חודשי' value={`₪${fmt(total.wageMonthly)}`} icon={Banknote} accent="emerald" />
+        <KpiCard label="עלות מעביד חודשית" value={`₪${fmt(total.employerCostMonthly)}`} icon={Banknote} accent="emerald" />
         <KpiCard label='סה"כ הוצאות חודשי' value={`₪${fmt(total.expensesMonthly)}`} icon={ReceiptText} />
         <KpiCard label='סה"כ תקציב חודשי' value={`₪${fmt(total.totalMonthly)}`} icon={Wallet} />
       </div>

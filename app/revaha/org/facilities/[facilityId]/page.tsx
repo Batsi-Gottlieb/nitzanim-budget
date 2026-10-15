@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { Banknote, Coins, ReceiptText, Wallet } from "lucide-react";
+import { Banknote, ReceiptText, Wallet } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { computeFacilityBudget } from "@/lib/revaha/calc";
 import { KpiCard } from "@/components/revaha/KpiCard";
@@ -44,9 +44,8 @@ export default async function RevahaFacilityDetailPage({ params }: { params: Pro
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
-        <KpiCard label='סה"כ שכר חודשי' value={`₪${fmt(budget.wageMonthly)}`} icon={Banknote} accent="emerald" />
-        <KpiCard label="תוספות ונסיעות" value={`₪${fmt(budget.staffAdditionsMonthly)}`} icon={Coins} />
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
+        <KpiCard label="עלות מעביד חודשית" value={`₪${fmt(budget.employerCostMonthly)}`} icon={Banknote} accent="emerald" />
         <KpiCard label="הוצאות שוטפות" value={`₪${fmt(budget.expensesMonthly)}`} icon={ReceiptText} />
         <KpiCard label='סה"כ תקציב חודשי' value={`₪${fmt(budget.totalMonthly)}`} icon={Wallet} />
       </div>

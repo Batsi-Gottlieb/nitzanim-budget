@@ -92,36 +92,34 @@ export async function GET() {
     views: [{ rightToLeft: true, state: "frozen", ySplit: 3 }],
   });
   setTabColor(facilitySheet, TAB_COLORS.facilitySummary);
-  styleTitleRow(facilitySheet, "G", "סיכום רשתי לפי פנימייה");
+  styleTitleRow(facilitySheet, "F", "סיכום רשתי לפי פנימייה");
   const facilityHeader = facilitySheet.addRow([
     "פנימייה",
     "מס' עובדים",
     "ברירת מחדל לסופ\"שים בחודש (פנימייה)",
-    "שכר חודשי",
-    "תוספות ונסיעות",
+    "עלות מעביד חודשית",
     "הוצאות שוטפות",
     "תקציב חודשי כולל",
   ]);
   styleHeaderRow(facilityHeader);
-  facilitySheet.autoFilter = { from: "A3", to: "G3" };
+  facilitySheet.autoFilter = { from: "A3", to: "F3" };
   perFacility.forEach((p, i) => {
     const dataRow = facilitySheet.addRow([
       p.facility.name,
       p.staffCount,
       p.facility.weekends_per_month ?? DEFAULT_WEEKENDS_PER_MONTH,
-      p.budget.wageMonthly,
-      p.budget.staffAdditionsMonthly,
+      p.budget.employerCostMonthly,
       p.budget.expensesMonthly,
       p.budget.totalMonthly,
     ]);
     styleDataRow(dataRow, i);
     dataRow.getCell(3).numFmt = "0.0";
-    for (let c = 4; c <= 7; c++) dataRow.getCell(c).numFmt = '"₪"#,##0';
+    for (let c = 4; c <= 6; c++) dataRow.getCell(c).numFmt = '"₪"#,##0';
   });
   facilitySheet.getColumn(1).width = 24;
   facilitySheet.getColumn(2).width = 12;
   facilitySheet.getColumn(3).width = 26;
-  for (let c = 4; c <= 7; c++) facilitySheet.getColumn(c).width = 18;
+  for (let c = 4; c <= 6; c++) facilitySheet.getColumn(c).width = 18;
 
   // ---- Sheet 2: שיבוץ עובדים — כל הרשת (role-type header + day-by-day matrix, all facilities) ----
   const matrixLastCol = "M"; // "", פנימייה, שם עובד, תפקיד, אחוז משרה, 7 days, סה"כ = 5 + 7 + 1 = 13 cols

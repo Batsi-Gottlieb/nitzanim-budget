@@ -380,9 +380,10 @@ export function computeProfitLoss(
   };
 }
 
+/** Monthly budget: total employer cost of the staff (see staffEmployerCostMonthly — gross salary + fixed
+ * additions + travel, with the employer loading) plus the facility's operating expenses. */
 export type FacilityBudgetSummary = {
-  wageMonthly: number;
-  staffAdditionsMonthly: number;
+  employerCostMonthly: number;
   expensesMonthly: number;
   totalMonthly: number;
 };
@@ -393,34 +394,19 @@ export function computeFacilityBudget(
   facility: Facility,
   expenses: FacilityExpenseLineItem[]
 ): FacilityBudgetSummary {
-  let wageMonthly = 0;
-  for (const a of assignments) {
-    wageMonthly += assignmentMonthlyWage(a, facility);
-  }
-
-  const staffAdditionsMonthly = staffList.reduce(
-    (s, st) => s + (st.monthly_addition ?? 0) + (st.monthly_travel ?? 0),
-    0
-  );
+  const employerCostMonthly = facilityEmployerCostMonthly(staffList, assignments, facility);
   const expensesMonthly = expenses.reduce((s, e) => s + (e.monthly_amount ?? 0), 0);
-
-  return {
-    wageMonthly,
-    staffAdditionsMonthly,
-    expensesMonthly,
-    totalMonthly: wageMonthly + staffAdditionsMonthly + expensesMonthly,
-  };
+  return { employerCostMonthly, expensesMonthly, totalMonthly: employerCostMonthly + expensesMonthly };
 }
 
 export function addFacilityBudgets(summaries: FacilityBudgetSummary[]): FacilityBudgetSummary {
   return summaries.reduce(
     (acc, s) => ({
-      wageMonthly: acc.wageMonthly + s.wageMonthly,
-      staffAdditionsMonthly: acc.staffAdditionsMonthly + s.staffAdditionsMonthly,
+      employerCostMonthly: acc.employerCostMonthly + s.employerCostMonthly,
       expensesMonthly: acc.expensesMonthly + s.expensesMonthly,
       totalMonthly: acc.totalMonthly + s.totalMonthly,
     }),
-    { wageMonthly: 0, staffAdditionsMonthly: 0, expensesMonthly: 0, totalMonthly: 0 }
+    { employerCostMonthly: 0, expensesMonthly: 0, totalMonthly: 0 }
   );
 }
 

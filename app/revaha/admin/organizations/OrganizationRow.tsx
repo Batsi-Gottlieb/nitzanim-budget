@@ -132,7 +132,7 @@ export function OrganizationRow({
             תקציב חודשי:
           </div>
           <p className="text-sm font-bold text-slate-900">₪{fmtMoney(monthlyBudget)}</p>
-          <p className="text-[10px] text-slate-400">מחושב לפי שיבוץ עובדים, שכר והוצאות הפנימיות</p>
+          <p className="text-[10px] text-slate-400">מחושב לפי עלות מעביד והוצאות הפנימיות</p>
         </div>
 
         <div>
