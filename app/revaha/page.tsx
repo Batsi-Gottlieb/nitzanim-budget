@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Banknote, Building2, FileDown, ReceiptText, Users2, Wallet } from "lucide-react";
+import { Banknote, Building2, FileDown, LogIn, ReceiptText, Users2, Wallet } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentRevahaProfile } from "@/lib/revaha/auth";
 import { addFacilityBudgets, computeFacilityBudget } from "@/lib/revaha/calc";
@@ -192,10 +192,17 @@ export default async function RevahaDashboardPage() {
             <Link
               key={facility.id}
               href={`/revaha/org/facilities/${facility.id}`}
-              className="flex items-center justify-between px-4 py-3 text-sm transition-colors hover:bg-slate-50/70"
+              className="group flex items-center gap-3 px-4 py-3 text-sm transition-colors hover:bg-slate-50/70"
             >
-              <span className="font-semibold text-slate-900">{facility.name}</span>
+              <span className="min-w-0 flex-1 truncate font-semibold text-slate-900">{facility.name}</span>
               <span className="text-slate-500">₪{fmt(summary.totalMonthly)}/חודש</span>
+              <span
+                title="כניסה לפנימייה"
+                aria-label={`כניסה לפנימייה ${facility.name}`}
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-slate-200 text-emerald-600 transition-colors group-hover:border-emerald-200 group-hover:bg-emerald-50"
+              >
+                <LogIn className="h-4 w-4" />
+              </span>
             </Link>
           ))}
           {summaries.length === 0 && <div className="px-4 py-3 text-sm text-slate-500">אין פנימיות עדיין</div>}

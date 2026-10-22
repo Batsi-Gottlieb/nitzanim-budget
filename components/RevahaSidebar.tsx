@@ -149,7 +149,7 @@ export function RevahaSidebar({
     </header>
     {open && <div className="fixed inset-0 z-40 bg-slate-900/40 lg:hidden" onClick={closeMenu} aria-hidden="true" />}
     <aside
-      className={`fixed inset-y-0 right-0 z-50 flex w-72 max-w-[85vw] shrink-0 select-none flex-col overflow-y-auto border-l border-slate-200/80 bg-white shadow-xl transition-transform duration-200 lg:static lg:z-auto lg:min-h-screen lg:translate-x-0 lg:overflow-visible lg:shadow-xs ${
+      className={`fixed inset-y-0 right-0 z-50 flex w-72 max-w-[85vw] shrink-0 select-none flex-col overflow-y-auto border-l border-slate-200/80 bg-white shadow-xl transition-transform duration-200 lg:sticky lg:top-0 lg:z-auto lg:h-screen lg:translate-x-0 lg:self-start lg:overflow-visible lg:shadow-xs ${
         open ? "translate-x-0" : "translate-x-full"
       }`}
     >
@@ -161,7 +161,7 @@ export function RevahaSidebar({
       >
         <X className="h-5 w-5" />
       </button>
-      <div className="border-b border-slate-100 bg-slate-50/50 p-5">
+      <div className="shrink-0 border-b border-slate-100 bg-slate-50/50 p-5">
         <Link
           href="/revaha"
           onClick={closeMenu}
@@ -267,7 +267,7 @@ export function RevahaSidebar({
         </div>
       </div>
 
-      <div className="border-t border-slate-100 bg-slate-50/40 p-3">
+      <div className="shrink-0 border-t border-slate-100 bg-slate-50/40 p-3">
         <form action="/logout" method="post">
           <button className="w-full rounded-lg border border-slate-200 py-1.5 text-xs font-medium text-slate-500 transition hover:border-slate-300 hover:text-slate-700">
             התנתקות

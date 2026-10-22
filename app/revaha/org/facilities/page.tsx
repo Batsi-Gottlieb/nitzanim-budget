@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Building2 } from "lucide-react";
+import { Building2, LogIn } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentRevahaProfile } from "@/lib/revaha/auth";
 import { CreateFacilityForm } from "./CreateFacilityForm";
@@ -33,11 +33,18 @@ export default async function RevahaFacilitiesPage() {
           <Link
             key={f.id}
             href={`/revaha/org/facilities/${f.id}`}
-            className="flex items-center justify-between px-4 py-3 text-sm transition-colors hover:bg-slate-50"
+            className="group flex items-center gap-3 px-4 py-3 text-sm transition-colors hover:bg-slate-50"
           >
-            <span className="font-semibold text-slate-900">{f.name}</span>
+            <span className="min-w-0 flex-1 truncate font-semibold text-slate-900">{f.name}</span>
             <span className="text-xs text-slate-500">
               {(f.facility_models_revaha as unknown as { name: string } | null)?.name ?? "ללא מודל"}
+            </span>
+            <span
+              title="כניסה לפנימייה"
+              aria-label={`כניסה לפנימייה ${f.name}`}
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-slate-200 text-emerald-600 transition-colors group-hover:border-emerald-200 group-hover:bg-emerald-50"
+            >
+              <LogIn className="h-4 w-4" />
             </span>
           </Link>
         ))}
