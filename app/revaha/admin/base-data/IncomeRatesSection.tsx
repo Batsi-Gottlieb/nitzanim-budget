@@ -24,7 +24,7 @@ function RateRow({ c }: { c: IncomeRateCategory }) {
     return (
       <form action={handleSave} className="space-y-2 rounded-lg border-2 border-indigo-200 bg-white px-3 py-2">
         <div className="flex flex-wrap items-center gap-2">
-          <input name="name" required defaultValue={c.name} aria-label="שם הקטגוריה" className="min-w-0 flex-1 rounded-lg border border-slate-200 px-2 py-1 text-sm text-slate-900" />
+          <input name="name" required defaultValue={c.name} aria-label="שם הקטגוריה" className="w-full rounded-lg border border-slate-200 px-2 py-1 text-sm text-slate-900" />
           <div className="flex items-center gap-1 text-sm text-slate-500">
             ₪
             <input
