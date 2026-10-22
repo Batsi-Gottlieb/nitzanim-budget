@@ -2,7 +2,7 @@
 
 import { useTransition } from "react";
 import { X } from "lucide-react";
-import { assignOrganizationToCompany, updateOrganizationDetails } from "./actions";
+import { updateOrganizationDetails } from "./actions";
 import { OrgUsersSection } from "./OrgUsersSection";
 
 type UserRow = { id: string; email: string | null; full_name: string | null };
@@ -11,30 +11,21 @@ type OrganizationInfo = {
   name: string;
   contact_email: string | null;
   contact_phone: string | null;
-  reseller_company_id: string | null;
 };
-type ResellerCompanyOption = { id: string; name: string };
 
 export function EditOrganizationModal({
   organization,
   initialUsers,
-  resellerCompanies,
   onClose,
 }: {
   organization: OrganizationInfo;
   initialUsers: UserRow[];
-  resellerCompanies?: ResellerCompanyOption[];
   onClose: () => void;
 }) {
   const [isPending, startTransition] = useTransition();
-  const [companyPending, startCompanyTransition] = useTransition();
 
   function handleSave(formData: FormData) {
     startTransition(() => updateOrganizationDetails(organization.id, formData));
-  }
-
-  function handleCompanyChange(formData: FormData) {
-    startCompanyTransition(() => assignOrganizationToCompany(organization.id, formData));
   }
 
   return (
@@ -96,34 +87,6 @@ export function EditOrganizationModal({
             </div>
           </form>
         </section>
-
-        {resellerCompanies && (
-          <section className="mb-5 rounded-xl border border-slate-200 bg-slate-50/50 p-4">
-            <h3 className="mb-3 text-sm font-bold text-slate-900">שיוך לחברת רו״ח</h3>
-            <form action={handleCompanyChange} className="flex flex-wrap items-end gap-3">
-              <div className="min-w-0 flex-1 sm:max-w-xs">
-                <select
-                  name="reseller_company_id"
-                  defaultValue={organization.reseller_company_id ?? ""}
-                  className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm"
-                >
-                  <option value="">ניצנים ישירות</option>
-                  {resellerCompanies.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <button
-                disabled={companyPending}
-                className="rounded-xl border border-slate-300 bg-white px-3.5 py-1.5 text-xs font-semibold text-slate-700 transition-all hover:bg-slate-50 disabled:opacity-60"
-              >
-                {companyPending ? "מעדכן..." : "עדכון שיוך"}
-              </button>
-            </form>
-          </section>
-        )}
 
         <OrgUsersSection organizationId={organization.id} initialUsers={initialUsers} />
       </div>

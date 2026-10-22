@@ -126,7 +126,6 @@ export default async function RevahaOrganizationsPage() {
                 users={(allUsers ?? []).filter((u) => u.organization_id === o.id)}
                 facilities={orgFacilities.map((f) => ({ id: f.id, name: f.name }))}
                 monthlyBudget={orgBudget.totalMonthly}
-                resellerCompanies={isSuperAdmin ? resellerCompanies ?? [] : undefined}
               />
             );
           })}

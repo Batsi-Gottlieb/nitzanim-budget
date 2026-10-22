@@ -12,14 +12,6 @@ function randomPassword() {
   return Math.random().toString(36).slice(2, 10) + Math.random().toString(36).slice(2, 6).toUpperCase() + "!1";
 }
 
-async function requireRevahaAdmin() {
-  const session = await getCurrentRevahaProfile();
-  if (session?.profile?.role !== "admin") {
-    throw new Error("פעולה זו זמינה למנהל מערכת בלבד");
-  }
-  return session;
-}
-
 /** Super-admin, or a reseller company's own admin/staff managing their own clients. */
 async function requireRevahaManager() {
   const session = await getCurrentRevahaProfile();
@@ -88,16 +80,6 @@ export async function updateOrganizationDetails(organizationId: string, formData
   const contact_email = (formData.get("contact_email") as string) || null;
   const contact_phone = (formData.get("contact_phone") as string) || null;
   await supabase.from("organizations_revaha").update({ name, contact_email, contact_phone }).eq("id", organizationId);
-  revalidatePath(`/revaha/admin/organizations/${organizationId}`);
-  revalidatePath("/revaha/admin/organizations");
-}
-
-/** Super-admin only: reassign (or unassign) which reseller company owns an organization. */
-export async function assignOrganizationToCompany(organizationId: string, formData: FormData) {
-  await requireRevahaAdmin();
-  const reseller_company_id = (formData.get("reseller_company_id") as string) || null;
-  const supabase = await createClient();
-  await supabase.from("organizations_revaha").update({ reseller_company_id }).eq("id", organizationId);
   revalidatePath(`/revaha/admin/organizations/${organizationId}`);
   revalidatePath("/revaha/admin/organizations");
 }

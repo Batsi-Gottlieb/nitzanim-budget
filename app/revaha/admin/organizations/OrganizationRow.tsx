@@ -11,9 +11,7 @@ type OrganizationInfo = {
   name: string;
   contact_email: string | null;
   contact_phone: string | null;
-  reseller_company_id: string | null;
 };
-type ResellerCompanyOption = { id: string; name: string };
 type FacilityOption = { id: string; name: string };
 
 function fmtMoney(n: number) {
@@ -27,7 +25,6 @@ export function OrganizationRow({
   companyContactEmail,
   facilities,
   monthlyBudget,
-  resellerCompanies,
 }: {
   organization: OrganizationInfo;
   users: UserRow[];
@@ -35,7 +32,6 @@ export function OrganizationRow({
   companyContactEmail?: string | null;
   facilities: FacilityOption[];
   monthlyBudget: number;
-  resellerCompanies?: ResellerCompanyOption[];
 }) {
   const [modalOpen, setModalOpen] = useState(false);
   const primaryUser = users[0];
@@ -158,7 +154,6 @@ export function OrganizationRow({
         <EditOrganizationModal
           organization={organization}
           initialUsers={users}
-          resellerCompanies={resellerCompanies}
           onClose={() => setModalOpen(false)}
         />
       )}
