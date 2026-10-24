@@ -125,6 +125,12 @@ export default async function ClientReportsPage() {
         </div>
         <div className="flex gap-2">
           <a
+            href="/client/letter"
+            className="rounded-lg border border-border bg-surface px-4 py-2 text-sm font-semibold hover:bg-surface-muted"
+          >
+            מכתב סיכום ללקוח
+          </a>
+          <a
             href={`/api/clients/${clientId}/export?tier=basic`}
             className="rounded-lg border border-border bg-surface px-4 py-2 text-sm font-semibold hover:bg-surface-muted"
           >

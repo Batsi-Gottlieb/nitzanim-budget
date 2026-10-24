@@ -68,6 +68,7 @@ export default async function SubModelPage({ params }: { params: Promise<{ subMo
         lineItems={lineItems ?? []}
         defaultIncome={defaultIncome}
         maxParentPriceNoCamp={maxParentPriceNoCamp}
+        category={model.category}
       />
     </div>
   );

@@ -24,7 +24,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <div className="flex min-h-screen flex-col">
       {isImpersonating && (
-        <form action={returnToAdmin} className="flex items-center justify-between bg-accent px-4 py-2 text-sm">
+        <form action={returnToAdmin} className="no-print flex items-center justify-between bg-accent px-4 py-2 text-sm">
           <span className="font-medium text-accent-foreground">מציג/ה כעת כלקוח: {profile?.full_name ?? ""}</span>
           <button className="rounded-lg bg-accent-foreground px-3 py-1 text-xs font-semibold text-accent hover:opacity-90">
             חזרה לניהול

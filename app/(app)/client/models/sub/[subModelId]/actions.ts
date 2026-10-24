@@ -13,6 +13,8 @@ export async function updateSubModelSettings(subModelId: string, formData: FormD
       active_months_count: num("active_months_count"),
       participants_count: num("participants_count"),
       groups_count: num("groups_count"),
+      grade3_count: num("grade3_count"),
+      grade3_rate: num("grade3_rate"),
       updated_at: new Date().toISOString(),
     })
     .eq("id", subModelId);

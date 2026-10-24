@@ -51,6 +51,13 @@ const ICONS: Record<string, React.ReactNode> = {
   ),
 };
 
+ICONS.letter = (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+    <path d="M6 3h9l4 4v14H6V3Z" strokeLinejoin="round" />
+    <path d="M14 3v5h5M9 12h7M9 16h7" strokeLinecap="round" />
+  </svg>
+);
+
 export function Sidebar({
   isAdmin,
   fullName,
@@ -71,6 +78,7 @@ export function Sidebar({
         { href: "/", label: "לוח בקרה", icon: ICONS.dashboard },
         { href: "/client/models", label: "המודלים שלי", icon: ICONS.models },
         { href: "/client/reports", label: "דוחות", icon: ICONS.reports },
+        { href: "/client/letter", label: "מכתב סיכום", icon: ICONS.letter },
       ];
 
   return (

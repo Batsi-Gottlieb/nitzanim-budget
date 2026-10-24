@@ -2,7 +2,8 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { BudgetLineItem, MONTHS, SubModel, SubModelMonth } from "@/lib/types";
-import { computeSubModelBudget, isIncomeItemType, summarizeForReport } from "@/lib/calc";
+import { ITEM_TYPE_LABELS as ITEM_LABELS } from "@/lib/budgetItemExplanations";
+import { computeGrade3, computeSubModelBudget, isIncomeItemType, summarizeForReport } from "@/lib/calc";
 import {
   addLineItem,
   deleteLineItem,
@@ -13,31 +14,7 @@ import {
 
 type YearGeneralRow = { calendar_month: number; month_order: number; activity_days: number; feeding_days: number };
 
-const ITEM_TYPE_LABELS: Record<string, string> = {
-  שכר: "שכר",
-  חוג_העשרה: "חוגי העשרה",
-  מתכלים: "ציוד מתכלה",
-  הזנה: "הזנה",
-  תקורה: "תקורה",
-  הכנסה_משתתף: "הכנסה למשתתף",
-  הכנסת_משרד: "הכנסת משרד החינוך",
-  השתלמויות: "השתלמויות",
-  רכזים_קבוע: "רכזים - סכום קבוע",
-  בונוס: "בונוס",
-  בונוס_קייטנה: "בונוס קייטנה",
-  מענק: "מענק",
-  ערכות: "ערכות",
-  נקיון: "ניקיון",
-  שיפוי_בעלויות: "שיפוי בעלויות",
-  פעילות_אחר: "פעילות - אחר",
-  העשרה_קייטנה: "העשרה קייטנה",
-  הזנה_קייטנה: "הזנה קייטנה",
-  כיבוד: "כיבוד",
-  תקורה_רשות: "תקורה רשות",
-  הכנסה_משתתף_תוספתי: "הכנסת משתתפים תוספתי",
-  הכנסה_משתתף_קייטנה: "הכנסת משתתפים קייטנה",
-  הכנסת_עירייה: "הכנסת עירייה השלמה",
-};
+const ITEM_TYPE_LABELS: Record<string, string> = ITEM_LABELS;
 
 const CATEGORY_GROUPS: { category: string; types: string[] }[] = [
   { category: "שכר", types: ["שכר", "השתלמויות", "רכזים_קבוע", "בונוס", "בונוס_קייטנה", "מענק"] },
@@ -83,6 +60,7 @@ export function SubModelEditor({
   lineItems: initialLineItems,
   defaultIncome,
   maxParentPriceNoCamp,
+  category,
 }: {
   subModelId: string;
   clientId: string;
@@ -92,6 +70,7 @@ export function SubModelEditor({
   lineItems: BudgetLineItem[];
   defaultIncome: { participant: number; ministry: number } | null;
   maxParentPriceNoCamp: number | null;
+  category: "גנים" | "בתי_ספר";
 }) {
   const [subModel, setSubModel] = useState(initialSubModel);
   const [months, setMonths] = useState(initialMonths);
@@ -128,6 +107,8 @@ export function SubModelEditor({
     fd.set("active_months_count", String(subModel.active_months_count));
     fd.set("participants_count", String(subModel.participants_count));
     fd.set("groups_count", String(subModel.groups_count));
+    fd.set("grade3_count", String(subModel.grade3_count ?? 0));
+    fd.set("grade3_rate", String(subModel.grade3_rate ?? 0));
     startTransition(() => updateSubModelSettings(subModelId, fd));
   }
 
@@ -191,6 +172,11 @@ export function SubModelEditor({
     setLineItems((prev) => prev.filter((i) => i.id !== itemId));
     startTransition(() => deleteLineItem(itemId, subModelId));
   }
+
+  const grade3 = useMemo(
+    () => computeGrade3(subModel, months, yearGeneral, lineItems),
+    [subModel, months, yearGeneral, lineItems]
+  );
 
   const categoryGroups = CATEGORY_GROUPS.map((cat) => ({
     category: cat.category,
@@ -271,6 +257,73 @@ export function SubModelEditor({
           שמירת הגדרות
         </button>
       </section>
+
+      {category === "בתי_ספר" && (
+        <section className="rounded-2xl border border-border bg-surface p-5">
+          <h2 className="text-sm font-semibold">ילדי כיתה ג&apos; (משתתפים תוספתיים)</h2>
+          <p className="mb-3 mt-1 text-xs text-foreground-muted">
+            ילדי כיתה ג&apos; אינם נכללים בכמות המשתתפים ובתקציב המודל — החישוב כאן נפרד ומשמש לבקרה בלבד.
+          </p>
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-5">
+            <Field label="כמות ילדי ג' (אינם נכללים בתקציב)">
+              <input
+                type="number"
+                value={subModel.grade3_count ?? 0}
+                onChange={(e) => setSubModel({ ...subModel, grade3_count: Number(e.target.value) })}
+                className="w-full rounded-md border border-border px-2 py-1.5 text-sm"
+              />
+            </Field>
+            <Field label="תעריף לילד כיתה ג' (לחודש)">
+              <input
+                type="number"
+                step="0.01"
+                value={subModel.grade3_rate ?? 0}
+                onChange={(e) => setSubModel({ ...subModel, grade3_rate: Number(e.target.value) })}
+                className="w-full rounded-md border border-border px-2 py-1.5 text-sm"
+              />
+            </Field>
+            <Field label="הכנסה לילדי כיתה ג'">
+              <div className="rounded-md border border-border bg-surface-muted px-2 py-1.5 text-sm font-semibold tabular-nums">
+                ₪{fmt(grade3.income)}
+              </div>
+              <p className="mt-0.5 text-[11px] text-foreground-muted">
+                {grade3.monthsCount} חודשים × {fmt(grade3.childrenCount)} ילדים × ₪{fmt(grade3.ratePerChild)}
+              </p>
+            </Field>
+            <Field label="הוצאות הזנה לילדי ג'">
+              <div className="rounded-md border border-border bg-surface-muted px-2 py-1.5 text-sm font-semibold tabular-nums">
+                ₪{fmt(grade3.feedingExpense)}
+              </div>
+              <p className="mt-0.5 text-[11px] text-foreground-muted">
+                {fmt(grade3.childrenCount)} ילדים × {fmt(grade3.feedingDays)} ימי הזנה × ₪
+                {grade3.mealCost.toLocaleString("he-IL", { maximumFractionDigits: 2 })} למנה
+              </p>
+            </Field>
+            <Field label="עודף מילדי ג'">
+              <div
+                className={`rounded-md border border-border bg-surface-muted px-2 py-1.5 text-sm font-bold tabular-nums ${
+                  grade3.surplus < 0 ? "text-danger" : "text-success"
+                }`}
+              >
+                ₪{fmt(grade3.surplus)}
+              </div>
+              <p className="mt-0.5 text-[11px] text-foreground-muted">הכנסה בקיזוז הוצאות הזנה</p>
+            </Field>
+          </div>
+          {grade3.mealCost === 0 && grade3.childrenCount > 0 && (
+            <p className="mt-3 text-xs text-danger">
+              לא הוגדרה עלות מנה — הוסיפו סעיף &quot;הזנה&quot; עם עלות מנה כדי לחשב את הוצאות ההזנה.
+            </p>
+          )}
+          <button
+            onClick={saveSettings}
+            disabled={isPending}
+            className="mt-4 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary-hover disabled:opacity-60"
+          >
+            שמירת נתוני ילדי ג&apos;
+          </button>
+        </section>
+      )}
 
       <section className="overflow-x-auto rounded-2xl border border-border bg-surface">
         <div className="p-4">

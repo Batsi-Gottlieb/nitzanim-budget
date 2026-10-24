@@ -96,6 +96,9 @@ export type ClientYear = {
   client_id: string;
   year_id: string;
   lamas_level: number | null;
+  /** שורת פתיח וסעיפי "הערות כלליות לתקציב" (מופיעים במכתב הסיכום). הנקודות — שורה לכל נקודה. */
+  budget_notes_intro: string | null;
+  budget_notes_points: string | null;
 };
 
 export type ClientModel = {
@@ -114,6 +117,9 @@ export type SubModel = {
   active_months_count: number;
   participants_count: number;
   groups_count: number;
+  /** ילדי כיתה ג' — משתתפים תוספתיים, אינם נכללים בכמות המשתתפים ובתקציב. */
+  grade3_count: number;
+  grade3_rate: number;
 };
 
 export type SubModelMonth = {

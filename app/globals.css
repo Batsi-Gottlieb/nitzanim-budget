@@ -84,3 +84,26 @@ body {
     min-width: 0;
   }
 }
+
+/* Print: the budget summary letter prints as a clean A4 page without the app shell. */
+@media print {
+  @page {
+    size: A4;
+    margin: 15mm;
+  }
+  body {
+    background: #fff;
+  }
+  aside,
+  .no-print {
+    display: none !important;
+  }
+  main {
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+  .letter-block,
+  .letter-item {
+    break-inside: avoid;
+  }
+}

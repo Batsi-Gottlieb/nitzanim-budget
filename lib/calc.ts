@@ -483,3 +483,38 @@ export function summarizeForReport(
     balance,
   };
 }
+
+export type Grade3Summary = {
+  childrenCount: number;
+  ratePerChild: number;
+  monthsCount: number;
+  feedingDays: number;
+  mealCost: number;
+  income: number;
+  feedingExpense: number;
+  surplus: number;
+};
+
+/**
+ * ילדי כיתה ג' הם משתתפים תוספתיים: אינם חלק מכמות המשתתפים ומהתקציב, ולכן החישוב נפרד.
+ * הכנסה = חודשי פעילות × ילדים × תעריף; הזנה = ילדים × ימי הזנה (סה"כ השנה) × עלות מנה מסעיף ההזנה; עודף = הכנסה − הזנה.
+ */
+export function computeGrade3(
+  subModel: SubModel,
+  subModelMonths: SubModelMonth[],
+  yearGeneral: { month_order: number; calendar_month: number; activity_days: number; feeding_days: number }[],
+  lineItems: BudgetLineItem[]
+): Grade3Summary {
+  const months = resolveMonths(subModelMonths, yearGeneral, {
+    participants_count: subModel.participants_count,
+    groups_count: subModel.groups_count || 1,
+  });
+  const childrenCount = Number(subModel.grade3_count) || 0;
+  const ratePerChild = Number(subModel.grade3_rate) || 0;
+  const monthsCount = subModel.active_months_count || 0;
+  const feedingDays = months.reduce((s, m) => s + m.feeding_days, 0);
+  const mealCost = lineItems.find((i) => i.item_type === "הזנה" && i.meal_cost !== null)?.meal_cost ?? 0;
+  const income = monthsCount * childrenCount * ratePerChild;
+  const feedingExpense = childrenCount * feedingDays * mealCost;
+  return { childrenCount, ratePerChild, monthsCount, feedingDays, mealCost, income, feedingExpense, surplus: income - feedingExpense };
+}
