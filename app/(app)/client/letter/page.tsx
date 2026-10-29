@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentProfile } from "@/lib/auth";
-import { computeSubModelBudget, summarizeForReport } from "@/lib/calc";
+import { computeGrade3, computeSubModelBudget, summarizeForReport } from "@/lib/calc";
 import { ITEM_TYPE_EXPLANATIONS, ITEM_TYPE_LABELS } from "@/lib/budgetItemExplanations";
 import type { BudgetItemType, BudgetLineItem } from "@/lib/types";
 import { LetterNotesForm } from "./LetterNotesForm";
@@ -99,7 +99,8 @@ export default async function BudgetLetterPage() {
           const byType = ITEM_ORDER.map((type) => ({ type, items: items.filter((i) => i.item_type === type) })).filter(
             (g) => g.items.length > 0
           );
-          return { sm, byType, basic: totalsFor("בסיסי"), extended: totalsFor("all") };
+          const grade3 = model.category === "בתי_ספר" ? computeGrade3(sm, months, yearGeneral ?? [], items) : null;
+          return { sm, byType, basic: totalsFor("בסיסי"), extended: totalsFor("all"), grade3 };
         });
       return {
         model,
@@ -109,6 +110,21 @@ export default async function BudgetLetterPage() {
       };
     })
     .filter((b) => b.subs.length > 0);
+
+  const grade3Total = modelBlocks
+    .flatMap((b) => b.subs)
+    .reduce(
+      (acc, s) =>
+        s.grade3 && s.grade3.childrenCount > 0
+          ? {
+              children: acc.children + s.grade3.childrenCount,
+              income: acc.income + s.grade3.income,
+              feeding: acc.feeding + s.grade3.feedingExpense,
+              surplus: acc.surplus + s.grade3.surplus,
+            }
+          : acc,
+      { children: 0, income: 0, feeding: 0, surplus: 0 }
+    );
 
   const grandBasic = modelBlocks.reduce((acc, b) => addTotals(acc, b.basic), emptyTotals());
   const grandExtended = modelBlocks.reduce((acc, b) => addTotals(acc, b.extended), emptyTotals());
@@ -270,6 +286,38 @@ export default async function BudgetLetterPage() {
               הסכומים בש&quot;ח לשנת הכספים כולה. התקציב הבסיסי כולל את הסעיפים שסומנו כבסיסיים בלבד; התקציב המורחב כולל גם את
               סעיפי ההרחבה.
             </p>
+          </section>
+        )}
+
+        {grade3Total.children > 0 && (
+          <section className="letter-block mt-6">
+            <h2 className="mb-2 border-b border-border pb-1 text-base font-bold">
+              ילדי כיתה ג&apos; — תרומה שנתית מחוץ לתקציב
+            </h2>
+            <p className="text-sm text-foreground-muted">
+              ילדי כיתה ג&apos; הם משתתפים תוספתיים שאינם שייכים לפרויקט הרשמי, ולכן אינם נכללים בטבלה שלמעלה. הנתונים להלן
+              הם חישוב פשטני לידיעה בלבד.
+            </p>
+            <table className="mt-2 w-full text-sm">
+              <tbody>
+                <tr className="border-b border-border">
+                  <td className="px-2 py-1.5">כמות ילדי ג&apos;</td>
+                  <td className="px-2 py-1.5 tabular-nums">{fmt(grade3Total.children)}</td>
+                </tr>
+                <tr className="border-b border-border">
+                  <td className="px-2 py-1.5">הכנסה לילדי כיתה ג&apos;</td>
+                  <td className="px-2 py-1.5 tabular-nums">{fmt(grade3Total.income)}</td>
+                </tr>
+                <tr className="border-b border-border">
+                  <td className="px-2 py-1.5">הוצאות הזנה לילדי ג&apos;</td>
+                  <td className="px-2 py-1.5 tabular-nums">{fmt(grade3Total.feeding)}</td>
+                </tr>
+                <tr className="bg-surface-muted font-bold">
+                  <td className="px-2 py-1.5">עודף מילדי ג&apos;</td>
+                  <td className="px-2 py-1.5 tabular-nums">{fmt(grade3Total.surplus)}</td>
+                </tr>
+              </tbody>
+            </table>
           </section>
         )}
       </article>

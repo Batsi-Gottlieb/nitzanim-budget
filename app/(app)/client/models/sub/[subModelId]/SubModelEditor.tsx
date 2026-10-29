@@ -3,7 +3,7 @@
 import { useMemo, useState, useTransition } from "react";
 import { BudgetLineItem, MONTHS, SubModel, SubModelMonth } from "@/lib/types";
 import { ITEM_TYPE_LABELS as ITEM_LABELS } from "@/lib/budgetItemExplanations";
-import { computeGrade3, computeSubModelBudget, isIncomeItemType, summarizeForReport } from "@/lib/calc";
+import { type Grade3Summary, computeGrade3, computeSubModelBudget, isIncomeItemType, summarizeForReport } from "@/lib/calc";
 import {
   addLineItem,
   deleteLineItem,
@@ -262,7 +262,8 @@ export function SubModelEditor({
         <section className="rounded-2xl border border-border bg-surface p-5">
           <h2 className="text-sm font-semibold">ילדי כיתה ג&apos; (משתתפים תוספתיים)</h2>
           <p className="mb-3 mt-1 text-xs text-foreground-muted">
-            ילדי כיתה ג&apos; אינם נכללים בכמות המשתתפים ובתקציב המודל — החישוב כאן נפרד ומשמש לבקרה בלבד.
+            ילדי כיתה ג&apos; הם משתתפים תוספתיים שאינם שייכים לפרויקט הרשמי — אינם נכללים בכמות המשתתפים, בטבלאות הנתונים
+            ובתקציב. החישוב נפרד, שנתי, ומוצג בשורה נפרדת בתחתית התקציב המחושב.
           </p>
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-5">
             <Field label="כמות ילדי ג' (אינם נכללים בתקציב)">
@@ -616,7 +617,12 @@ export function SubModelEditor({
             </div>
           </div>
         </div>
-        <ReportTable result={result} cutoffMonth={cutoffMonth} tierFilter={tierFilter} />
+        <ReportTable
+          result={result}
+          cutoffMonth={cutoffMonth}
+          tierFilter={tierFilter}
+          grade3={category === "בתי_ספר" && grade3.childrenCount > 0 ? grade3 : null}
+        />
       </section>
 
       <section className="rounded-2xl border border-border bg-surface p-5">
@@ -853,10 +859,12 @@ function ReportTable({
   result,
   cutoffMonth,
   tierFilter,
+  grade3,
 }: {
   result: ReturnType<typeof computeSubModelBudget>;
   cutoffMonth: number;
   tierFilter: "בסיסי" | "all";
+  grade3: Grade3Summary | null;
 }) {
   const visibleMonths = MONTHS.filter((m) => m.month_order <= cutoffMonth);
   const sum = (arr: number[]) => arr.slice(0, cutoffMonth).reduce((s, v) => s + v, 0);
@@ -934,6 +942,17 @@ function ReportTable({
             ))}
             <td className="px-3 py-2 tabular-nums">{fmt(sum(summary.balance.totalMonthly))}</td>
           </tr>
+          {grade3 && (
+            <tr className="border-t-2 border-dashed border-border text-foreground-muted">
+              <td className="px-3 py-2 italic" colSpan={visibleMonths.length + 1}>
+                עודף מילדי כיתה ג&apos; — שנתי, מחוץ לתקציב ולמאזן שלמעלה (הכנסה ₪{fmt(grade3.income)} בקיזוז הוצאות הזנה ₪
+                {fmt(grade3.feedingExpense)})
+              </td>
+              <td className={`px-3 py-2 font-semibold tabular-nums ${grade3.surplus < 0 ? "text-danger" : "text-success"}`}>
+                {fmt(grade3.surplus)}
+              </td>
+            </tr>
+          )}
         </tbody>
       </table>
     </div>
