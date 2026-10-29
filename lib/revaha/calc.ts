@@ -73,6 +73,99 @@ export function assignmentMonthlyWage(assignment: StaffRoleAssignment, facility:
   return monthlyHoursForAssignment(assignment, facility) * (assignment.hourly_rate ?? 0);
 }
 
+/** מכפיל עלות מעביד על תוספת השעות הנוספות (125%/150%) — לפי הגדרת המשרד. */
+export const OVERTIME_EMPLOYER_MULTIPLIER = 1.4;
+
+/** אחרי 9 שעות ביום — השעתיים הבאות (עד 11 שעות) הן שעות נוספות בתעריף 125%; מעבר ל־11 שעות — 150%. */
+const DAILY_OVERTIME_125_FROM_HOURS = 9;
+const DAILY_OVERTIME_150_FROM_HOURS = 11;
+/** שעות שבת: מיום שישי 17:00 עד יום שבת 18:00 — כולן בתעריף 150%. */
+const SHABBAT_START_MINUTE = 5 * 1440 + 17 * 60;
+const SHABBAT_END_MINUTE = 6 * 1440 + 18 * 60;
+
+export type OvertimeHours = {
+  /** שעות יומיות 9–11, בתעריף 125% (תוספת 25%) */
+  daily125: number;
+  /** שעות יומיות מעל 11, בתעריף 150% (תוספת 50%) */
+  daily150: number;
+  /** שעות שבת (שישי 17:00 – שבת 18:00), בתעריף 150% (תוספת 50%) */
+  shabbat150: number;
+};
+
+export const NO_OVERTIME: OvertimeHours = { daily125: 0, daily150: 0, shabbat150: 0 };
+
+export function addOvertimeHours(a: OvertimeHours, b: OvertimeHours): OvertimeHours {
+  return { daily125: a.daily125 + b.daily125, daily150: a.daily150 + b.daily150, shabbat150: a.shabbat150 + b.shabbat150 };
+}
+
+export function totalOvertimeHours(o: OvertimeHours): number {
+  return o.daily125 + o.daily150 + o.shabbat150;
+}
+
+/**
+ * Monthly overtime hours of one assignment — only for the detailed ("דיווח שעות מפורט") schedule, where
+ * every day has its own start/end. Each daily range is classified minute by minute: hours inside the
+ * Friday 17:00 – Saturday 18:00 window are Shabbat hours (150%); otherwise hours 9–11 of that range are
+ * 125% and beyond 11 are 150%. A Shabbat hour is never also counted as daily overtime (no double premium).
+ * Sun-Thu ranges recur every week (x4.3 a month); Fri/Sat ranges recur once per weekend worked.
+ */
+export function assignmentOvertimeHoursMonthly(
+  assignment: StaffRoleAssignment,
+  facility: Pick<Facility, "weekends_per_month">
+): OvertimeHours {
+  if (assignment.schedule_method !== "detailed") return NO_OVERTIME;
+  const weekends = assignment.weekend_occurrences_per_month ?? facility.weekends_per_month ?? DEFAULT_WEEKENDS_PER_MONTH;
+  let result = NO_OVERTIME;
+  for (const [dayKey, shift] of Object.entries(assignment.daily_shifts ?? {})) {
+    if (!shift?.start || !shift?.end) continue;
+    const day = Number(dayKey);
+    const startMinute = timeToMinutes(shift.start);
+    let length = timeToMinutes(shift.end) - startMinute;
+    if (length <= 0) length += 24 * 60;
+    const occurrences = day >= 5 ? weekends : AVG_WEEKS_PER_MONTH;
+    let d125 = 0;
+    let d150 = 0;
+    let shabbat = 0;
+    for (let m = 0; m < length; m++) {
+      const absolute = day * 1440 + startMinute + m;
+      if (absolute >= SHABBAT_START_MINUTE && absolute < SHABBAT_END_MINUTE) shabbat++;
+      else if (m >= DAILY_OVERTIME_150_FROM_HOURS * 60) d150++;
+      else if (m >= DAILY_OVERTIME_125_FROM_HOURS * 60) d125++;
+    }
+    result = addOvertimeHours(result, {
+      daily125: (d125 / 60) * occurrences,
+      daily150: (d150 / 60) * occurrences,
+      shabbat150: (shabbat / 60) * occurrences,
+    });
+  }
+  return result;
+}
+
+/** The premium on top of the regular hourly pay: 25% for 125% hours, 50% for 150% hours, times the hourly rate. */
+export function overtimePremiumGross(hours: OvertimeHours, hourlyRate: number): number {
+  return (hours.daily125 * 0.25 + (hours.daily150 + hours.shabbat150) * 0.5) * hourlyRate;
+}
+
+/** Employer cost of one assignment's overtime premium (premium x OVERTIME_EMPLOYER_MULTIPLIER). */
+export function assignmentOvertimeEmployerCost(
+  assignment: StaffRoleAssignment,
+  facility: Pick<Facility, "weekends_per_month">
+): number {
+  const hours = assignmentOvertimeHoursMonthly(assignment, facility);
+  return overtimePremiumGross(hours, assignmentHourlyRate(assignment)) * OVERTIME_EMPLOYER_MULTIPLIER;
+}
+
+/** Monthly overtime hours of each type for one employee, across all their roles. */
+export function staffOvertimeHoursMonthly(
+  staffId: string,
+  assignments: StaffRoleAssignment[],
+  facility: Pick<Facility, "weekends_per_month">
+): OvertimeHours {
+  return assignments
+    .filter((a) => a.staff_id === staffId)
+    .reduce((acc, a) => addOvertimeHours(acc, assignmentOvertimeHoursMonthly(a, facility)), NO_OVERTIME);
+}
+
 /** A staff member's total gross salary for the month — the sum of assignmentMonthlyWage across
  * every role they hold. */
 export function staffGrossSalaryMonthly(
@@ -96,6 +189,18 @@ export function staffGrossSalaryMonthly(
  * is computed once per employee, not per role, to avoid counting them more than once.
  */
 export function staffEmployerCostMonthly(
+  staff: Pick<Staff, "id" | "monthly_addition" | "monthly_travel" | "has_training_fund" | "employment_type">,
+  assignments: StaffRoleAssignment[],
+  facility: Pick<Facility, "weekends_per_month">
+): number {
+  const overtime = assignments
+    .filter((a) => a.staff_id === staff.id)
+    .reduce((sum, a) => sum + assignmentOvertimeEmployerCost(a, facility), 0);
+  return staffEmployerCostBeforeOvertime(staff, assignments, facility) + overtime;
+}
+
+/** The standard employer-cost formula above, without the overtime premium (see assignmentOvertimeEmployerCost). */
+function staffEmployerCostBeforeOvertime(
   staff: Pick<Staff, "id" | "monthly_addition" | "monthly_travel" | "has_training_fund" | "employment_type">,
   assignments: StaffRoleAssignment[],
   facility: Pick<Facility, "weekends_per_month">
@@ -236,6 +341,9 @@ export type AssignmentCostRow = {
   monthlyHours: number;
   grossMonthly: number;
   employerCostMonthly: number;
+  /** שעות נוספות חודשיות של השיבוץ (שיטת דיווח מפורט בלבד) — כלולות בעלות המעביד. */
+  overtimeHours: OvertimeHours;
+  overtimeEmployerCostMonthly: number;
 };
 
 /**
@@ -261,7 +369,7 @@ export function facilityEmployerCostByAssignment(
 
   for (const staff of staffList) {
     const staffAssignments = assignments.filter((a) => a.staff_id === staff.id);
-    const totalCost = staffEmployerCostMonthly(staff, assignments, facility);
+    const totalCost = staffEmployerCostBeforeOvertime(staff, assignments, facility);
     if (staffAssignments.length === 0) {
       rows.push({
         staffId: staff.id,
@@ -274,6 +382,8 @@ export function facilityEmployerCostByAssignment(
         monthlyHours: 0,
         grossMonthly: 0,
         employerCostMonthly: totalCost,
+        overtimeHours: NO_OVERTIME,
+        overtimeEmployerCostMonthly: 0,
       });
       continue;
     }
@@ -283,6 +393,7 @@ export function facilityEmployerCostByAssignment(
       const gross = assignmentMonthlyWage(a, facility);
       const share = grossTotal > 0 ? gross / grossTotal : 1 / staffAssignments.length;
       const roleTypeId = role?.role_type_id ?? "";
+      const overtimeEmployerCost = assignmentOvertimeEmployerCost(a, facility);
       rows.push({
         staffId: staff.id,
         staffName: staff.full_name,
@@ -293,7 +404,10 @@ export function facilityEmployerCostByAssignment(
         roleTypeName: roleTypeId ? roleTypeNameById.get(roleTypeId) ?? "?" : "ללא תפקיד",
         monthlyHours: monthlyHoursForAssignment(a, facility),
         grossMonthly: gross,
-        employerCostMonthly: totalCost * share,
+        // Overtime belongs to the assignment that generated it; the rest is shared by gross-salary share.
+        employerCostMonthly: totalCost * share + overtimeEmployerCost,
+        overtimeHours: assignmentOvertimeHoursMonthly(a, facility),
+        overtimeEmployerCostMonthly: overtimeEmployerCost,
       });
     }
   }
